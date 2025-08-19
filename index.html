@@ -78,6 +78,10 @@ body {
   font-weight: bold;
   margin-bottom: 4px;
   font-size: 1em;
+  color: #fff;              /* Teksti valkoiseksi */
+  padding: 4px 6px;         /* Pieni sisämarginaali */
+  border-radius: 6px;       /* Pyöristetyt kulmat */
+  display: inline-block;    /* Näyttää "tägiltä" */
 }
 
 .event-title {
@@ -116,23 +120,6 @@ body {
   .bottom-container .calendar-box iframe { height: 150px; }
 }
 </style>
-  <meta charset="utf-8" />
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    #calendar {
-      max-width: 900px;
-      margin: 0 auto;
-    }
-    .fc-event {
-      color: black !important; /* Teksti luettavaksi värillisellä taustalla */
-      border: none !important;
-    }
-  </style>
 </head>
 <body>
 
@@ -231,7 +218,7 @@ function renderEvent(containerId, events) {
     const description = item.description ? stripLinks(item.description) : '';
     const html = `
       <div class="event-card">
-        <div class="event-date" style="color:${dateColor}">${formatEventDate(start, end)}</div>
+        <div class="event-date" style="background:${dateColor}">${formatEventDate(start, end)}</div>
         <div class="event-title">${title}</div>
         ${description ? `<div class="event-description">${description}</div>` : ''}
       </div>`;
@@ -245,43 +232,5 @@ fetchEvents(NUORISO_CALENDAR_ID).then(data => renderEvent('nuoriso-events', data
 setTimeout(() => location.reload(), 15 * 60 * 1000);
 </script>
 
-  <h2>Metsäkylän VPK - Kalenterit</h2>
-  <div id="calendar"></div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var calendarEl = document.getElementById('calendar');
-
-      var calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        locale: 'fi',
-        height: "auto",
-        eventSources: [
-          {
-            url: 'https://metsakylanvpk.nimenhuuto.com/calendar/ical?format=ics', // esimerkki, muuta omasi
-            format: 'ics'
-          }
-          // voit lisätä tähän lisää kalentereita, samaan tapaan
-        ],
-        eventDidMount: function(info) {
-          const title = info.event.title.toLowerCase();
-
-          if (title.includes("harkka")) {
-            info.el.style.backgroundColor = "#4da6ff"; // sininen
-          } else if (title.includes("auto")) {
-            info.el.style.backgroundColor = "#ffcc99"; // oranssi
-          } else if (title.includes("kalustoesittely")) {
-            info.el.style.backgroundColor = "#c2f0c2"; // vihreä
-          } else if (title.includes("muu tapahtuma")) {
-            info.el.style.backgroundColor = "#e6e6e6"; // harmaa
-          } else {
-            info.el.style.backgroundColor = "#d9f2ff"; // oletus (vaalea sininen)
-          }
-        }
-      });
-
-      calendar.render();
-    });
-  </script>
 </body>
 </html>
