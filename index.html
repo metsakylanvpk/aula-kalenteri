@@ -46,7 +46,7 @@ body {
 
 .events-list {
   padding: 10px;
-  max-height: 220px;
+  max-height: 300px; /* enemmän tapahtumia näkyvissä */
   overflow-y: auto;
   background: #e6f2f5;
   border-bottom: 1px solid #ccc;
@@ -73,17 +73,17 @@ iframe {
   flex: 1;
   border: 0;
   width: 100%;
-  min-height: 300px;
+  min-height: 200px; /* pienennetty alaosa */
 }
 
 @media (max-width: 1024px) {
   .container { flex-direction: column; }
-  iframe { min-height: 250px; }
-  .events-list { max-height: 180px; }
+  iframe { min-height: 180px; }
+  .events-list { max-height: 250px; }
 }
 
 @media (max-width: 600px) {
-  iframe { min-height: 200px; }
+  iframe { min-height: 150px; }
   .header { font-size: 1.4em; padding: 8px; }
   .event-item { font-size: 0.9em; }
 }
@@ -123,8 +123,15 @@ const CALENDARS = [
   }
 ];
 
+function sanitizeText(text) {
+  // Poistaa kaikki linkit ja HTML-tagit
+  let div = document.createElement('div');
+  div.innerHTML = text;
+  return div.textContent || div.innerText || '';
+}
+
 function fetchEvents(calendarId, elementId) {
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${API_KEY}&timeMin=${new Date().toISOString()}&singleEvents=true&orderBy=startTime&maxResults=10`;
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${API_KEY}&timeMin=${new Date().toISOString()}&singleEvents=true&orderBy=startTime&maxResults=20`;
 
   fetch(url)
     .then(res => res.json())
@@ -137,8 +144,8 @@ function fetchEvents(calendarId, elementId) {
         const start = new Date(item.start.dateTime || item.start.date);
         const dateStr = start.toLocaleDateString('fi-FI', { day: '2-digit', month: '2-digit' });
         const timeStr = item.start.dateTime ? start.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' }) : '';
-        const title = item.summary || '(nimi puuttuu)';
-        const description = item.description ? item.description : '';
+        const title = sanitizeText(item.summary || '(nimi puuttuu)');
+        const description = item.description ? sanitizeText(item.description) : '';
         container.innerHTML += `
           <div class="event-item">
             <span class="date">${dateStr} ${timeStr}</span> – <span class="title">${title}</span>
