@@ -162,6 +162,13 @@ const API_KEY = 'AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs';
 const MIEHISTO_CALENDAR_ID = '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com';
 const NUORISO_CALENDAR_ID = 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.google.com';
 
+// Poistaa kalenterin nimen tapahtuman nimestä
+function cleanTitle(title) {
+  return title
+    .replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '')
+    .replace(/^Metsäkylän VPK Nuoriso-osasto\s*[-–:]?\s*/i, '');
+}
+
 function fetchEvents(calendarId) {
   const now = new Date().toISOString();
   const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=20`;
@@ -174,10 +181,11 @@ function renderEvent(containerId, events) {
   events.forEach(item => {
     const start = item.start.dateTime ? new Date(item.start.dateTime).toLocaleString('fi-FI') : item.start.date;
     const end = item.end.dateTime ? new Date(item.end.dateTime).toLocaleString('fi-FI') : item.end.date;
+    const title = cleanTitle(item.summary);
     const html = `
       <div class="event-card">
         <div class="event-date">${start}${start!==end ? ' – ' + end : ''}</div>
-        <div class="event-title">${item.summary}</div>
+        <div class="event-title">${title}</div>
         ${item.description ? `<div class="event-description">${item.description}</div>` : ''}
       </div>`;
     container.innerHTML += html;
