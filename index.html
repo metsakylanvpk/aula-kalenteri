@@ -10,26 +10,80 @@
       margin: 0; 
       font-family: Arial, sans-serif; 
       background: #f0f2f5; 
+      display: flex; 
+      justify-content: center; 
+      align-items: flex-start; 
+      padding: 20px;
+      min-height: 100vh;
     }
-    #calendar { 
-      max-width: 1200px; 
-      margin: 20px auto; 
-      background: #fff; 
-      border-radius: 10px; 
-      padding: 10px; 
+
+    .container {
+      display: flex;
+      gap: 20px;
+      width: 100%;
+      max-width: 1366px;
+      flex-wrap: wrap;
+    }
+
+    .calendar-box {
+      flex: 1 1 600px;
+      background: #fff;
+      border-radius: 12px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 600px;
+    }
+
+    .header {
+      background: #007b83;
+      color: white;
+      text-align: center;
+      font-size: 1.6em;
+      font-weight: bold;
+      padding: 10px;
+    }
+
+    .header.nuoriso {
+      background: #ff8114;
+    }
+
+    .calendar {
+      flex: 1;
+    }
+
+    @media (max-width: 1024px) {
+      .container { flex-direction: column; }
+      .calendar-box { min-height: 500px; }
+    }
+
+    @media (max-width: 600px) {
+      .calendar-box { min-height: 400px; }
+      .header { font-size: 1.4em; padding: 8px; }
     }
   </style>
 </head>
 <body>
 
-  <div id="calendar"></div>
+  <div class="container">
+    <!-- Miehistö -->
+    <div class="calendar-box">
+      <div class="header">Miehistö</div>
+      <div id="calendar-miehistö" class="calendar"></div>
+    </div>
+
+    <!-- Nuoriso-osasto -->
+    <div class="calendar-box">
+      <div class="header nuoriso">Nuoriso-osasto</div>
+      <div id="calendar-nuoriso" class="calendar"></div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var calendarEl = document.getElementById('calendar');
-
+    function createCalendar(elementId, icalUrl, color) {
+      var calendarEl = document.getElementById(elementId);
       var calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         height: 'auto',
@@ -38,24 +92,32 @@
           center: 'title',
           right: 'dayGridMonth,timeGridWeek,timeGridDay'
         },
-        events: [
-          {
-            url: 'https://calendar.google.com/calendar/ical/6fdpm0662hoerp1shdfdjskdbbei1dfe%40import.calendar.google.com/public/basic.ics',
-            color: '#007b83', // Miehistö
-            textColor: 'white'
-          },
-          {
-            url: 'https://calendar.google.com/calendar/ical/pfibgctlru8apgqvhrhcq1jbnod644un%40import.calendar.google.com/public/basic.ics',
-            color: '#ff8114', // Nuoriso-osasto
-            textColor: 'white'
-          }
-        ],
+        events: {
+          url: icalUrl,
+          format: 'ics',
+          failure: function() { alert('Kalenterin lataus epäonnistui: ' + elementId); }
+        },
+        eventColor: color,
+        eventTextColor: 'white',
         eventDisplay: 'block',
         eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false }
       });
-
       calendar.render();
-    });
+    }
+
+    // Miehistö
+    createCalendar(
+      'calendar-miehistö',
+      'https://calendar.google.com/calendar/ical/6fdpm0662hoerp1shdfdjskdbbei1dfe%40import.calendar.google.com/public/basic.ics',
+      '#007b83'
+    );
+
+    // Nuoriso-osasto
+    createCalendar(
+      'calendar-nuoriso',
+      'https://calendar.google.com/calendar/ical/pfibgctlru8apgqvhrhcq1jbnod644un%40import.calendar.google.com/public/basic.ics',
+      '#ff8114'
+    );
   </script>
 
 </body>
