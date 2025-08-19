@@ -2,183 +2,132 @@
 <html lang="fi">
 <head>
   <meta charset="UTF-8">
-  <title>Aulan kalenterit</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metsäkylän VPK Tapahtumat</title>
   <style>
     body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
       margin: 0;
-      background: linear-gradient(135deg, #f9f9f9, #e9eef3);
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .top {
-      flex: 1.2;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-    }
-
-    .bottom {
-      flex: 0.8;
-      display: flex;
-      gap: 20px;
       padding: 20px;
     }
-
-    .calendar-box {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
+    h2 {
+      margin-top: 0;
+    }
+    .event {
       background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-      overflow: hidden;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-
-    .header {
-      background: #007b83;
-      color: #fff;
-      text-align: center;
-      font-size: 1.6em;
-      padding: 10px;
-      font-weight: 600;
-      letter-spacing: 1px;
-    }
-
-    iframe {
-      flex: 1;
-      width: 100%;
-      border: none;
-    }
-
-    /* Tapahtumakortit */
-    .event-card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .event-date {
-      font-size: 1.1em;
+    .date {
       font-weight: bold;
+      font-size: 18px;
       margin-bottom: 6px;
     }
-
-    .event-title {
-      font-size: 1.3em;
-      margin-bottom: 6px;
+    .title {
+      font-size: 16px;
     }
-
-    .event-time {
-      font-size: 1em;
-      margin-bottom: 6px;
-    }
-
-    .event-desc {
-      font-size: 0.95em;
+    .description {
+      font-size: 14px;
       color: #444;
+      margin-top: 4px;
     }
-
     /* Värikoodaus päivämäärälle */
-    .harkka { color: green; }
-    .peli { color: red; }
-    .kokous { color: blue; }
-    .muu { color: gray; }
-
+    .harjoitus .date { color: green; }
+    .peli .date { color: blue; }
+    .kokous .date { color: orange; }
+    .muu .date { color: gray; }
   </style>
 </head>
 <body>
+  <h2>Tulevat tapahtumat</h2>
+  <div id="events"></div>
 
-  <!-- Yläosa: tapahtumalistat -->
-  <div class="top" id="events-container">
-    <h2 style="margin-bottom: 15px;">Tulevat tapahtumat</h2>
-  </div>
-
-  <!-- Alaosa: alkuperäiset widgetit -->
-  <div class="bottom">
-    <div class="calendar-box">
-      <div class="header">Miehistö</div>
-      <iframe src="https://metsakylanvpk.nimenhuuto.com/calendar/widget_iframe_events?css=&height=700&width=650"></iframe>
-    </div>
-    <div class="calendar-box">
-      <div class="header">Nuoriso-osasto</div>
-      <iframe src="https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/widget_iframe_events?css=&height=700&width=650"></iframe>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
   <script>
-    const urls = [
-      "https://metsakylanvpk.nimenhuuto.com/calendar/ical",
-      "https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/ical"
+    const feeds = [
+      "https://corsproxy.io/?" + encodeURIComponent("https://metsakylanvpk.nimenhuuto.com/calendar/ical"),
+      "https://corsproxy.io/?" + encodeURIComponent("https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/ical")
     ];
 
-    async function loadICal(url) {
-      const response = await fetch(url);
-      const text = await response.text();
-      const jcalData = ICAL.parse(text);
-      const comp = new ICAL.Component(jcalData);
-      return comp.getAllSubcomponents("vevent").map(ev => new ICAL.Event(ev));
+    async function loadICS(url) {
+      const res = await fetch(url);
+      return res.text();
     }
 
-    function classifyEvent(summary) {
-      const s = summary.toLowerCase();
-      if (s.includes("harkka")) return "harkka";
-      if (s.includes("peli") || s.includes("ottelu")) return "peli";
-      if (s.includes("kokous")) return "kokous";
+    function parseICS(ics) {
+      const events = [];
+      const lines = ics.split(/\r?\n/);
+      let event = null;
+
+      lines.forEach(line => {
+        if (line.startsWith("BEGIN:VEVENT")) {
+          event = {};
+        } else if (line.startsWith("END:VEVENT")) {
+          if (event) events.push(event);
+          event = null;
+        } else if (event) {
+          if (line.startsWith("DTSTART")) {
+            event.start = parseDate(line.split(":")[1]);
+          }
+          if (line.startsWith("DTEND")) {
+            event.end = parseDate(line.split(":")[1]);
+          }
+          if (line.startsWith("SUMMARY")) {
+            event.title = line.split(":")[1];
+          }
+          if (line.startsWith("DESCRIPTION")) {
+            event.description = line.split(":")[1];
+          }
+        }
+      });
+      return events;
+    }
+
+    function parseDate(str) {
+      return new Date(
+        str.substring(0,4),
+        str.substring(4,6)-1,
+        str.substring(6,8),
+        str.substring(9,11)||0,
+        str.substring(11,13)||0
+      );
+    }
+
+    function categorize(title) {
+      title = title.toLowerCase();
+      if (title.includes("harkka") || title.includes("harjoitus")) return "harjoitus";
+      if (title.includes("peli") || title.includes("ottelu")) return "peli";
+      if (title.includes("kokous")) return "kokous";
       return "muu";
     }
 
-    function renderEvents(events) {
-      const container = document.getElementById("events-container");
-      const upcoming = events.filter(e => e.startDate.toJSDate() >= new Date())
-                             .sort((a,b) => a.startDate.toJSDate() - b.startDate.toJSDate())
-                             .slice(0, 10);
+    async function showEvents() {
+      let allEvents = [];
+      for (let feed of feeds) {
+        const ics = await loadICS(feed);
+        allEvents = allEvents.concat(parseICS(ics));
+      }
 
-      upcoming.forEach(ev => {
-        const start = ev.startDate.toJSDate();
-        const end = ev.endDate?.toJSDate();
-        const dateStr = start.toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" });
-        const timeStr = end 
-          ? `${start.getHours()}:${String(start.getMinutes()).padStart(2,"0")} - ${end.getHours()}:${String(end.getMinutes()).padStart(2,"0")}`
-          : `${start.getHours()}:${String(start.getMinutes()).padStart(2,"0")}`;
+      allEvents.sort((a,b) => a.start - b.start);
 
-        const type = classifyEvent(ev.summary);
+      const container = document.getElementById("events");
+      container.innerHTML = "";
 
-        const card = document.createElement("div");
-        card.className = "event-card";
-        card.innerHTML = `
-          <div class="event-date ${type}">${dateStr}</div>
-          <div class="event-title">${ev.summary.replace("Metsäkylän VPK","").replace("Nuoriso-osasto","").trim()}</div>
-          <div class="event-time">${timeStr}</div>
-          <div class="event-desc">${(ev.description || "").replace(/https?:\/\/\S+/g, "")}</div>
+      allEvents.slice(0,10).forEach(ev => {
+        const div = document.createElement("div");
+        div.className = "event " + categorize(ev.title);
+
+        div.innerHTML = `
+          <div class="date">${ev.start.toLocaleDateString("fi-FI")} ${ev.start.toLocaleTimeString("fi-FI",{hour:"2-digit",minute:"2-digit"})} - ${ev.end.toLocaleTimeString("fi-FI",{hour:"2-digit",minute:"2-digit"})}</div>
+          <div class="title">${ev.title.replace(/^Metsäkylän VPK( Nuoriso-osasto)?:\s*/,"")}</div>
+          <div class="description">${ev.description ? ev.description.replace(/https?:\/\/\S+/g,"") : ""}</div>
         `;
-        container.appendChild(card);
+        container.appendChild(div);
       });
     }
 
-    (async () => {
-      let allEvents = [];
-      for (let url of urls) {
-        try {
-          const events = await loadICal(url);
-          allEvents = allEvents.concat(events);
-        } catch (e) {
-          console.error("Virhe ladattaessa kalenteria:", e);
-        }
-      }
-      renderEvents(allEvents);
-    })();
-
-    // Päivitä 15 min välein
-    setTimeout(() => location.reload(), 15 * 60 * 1000);
+    showEvents();
   </script>
-
 </body>
 </html>
