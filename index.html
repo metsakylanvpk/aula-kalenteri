@@ -20,7 +20,7 @@ body {
   flex-direction: column;
   width: 95%;
   max-width: 1366px;
-  gap: 20px;
+  gap: 20px;fun
 }
 
 .top-container {
@@ -171,10 +171,15 @@ function getDateColor(title) {
 }
 
 function stripLinks(html) {
+  // Poistaa kaikki <a> tagit
   const div = document.createElement('div');
   div.innerHTML = html;
   div.querySelectorAll('a').forEach(a => a.remove());
-  return div.innerHTML;
+  let text = div.textContent || div.innerText || "";
+
+  // Poistaa myös pelkät URL-osoitteet
+  text = text.replace(/https?:\/\/[^\s]+/g, '');
+  return text;
 }
 
 function fetchEvents(calendarId) {
@@ -210,3 +215,4 @@ setTimeout(() => location.reload(), 15 * 60 * 1000);
 
 </body>
 </html>
+
