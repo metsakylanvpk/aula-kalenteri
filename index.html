@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aulan kalenterit</title>
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.css" rel="stylesheet">
   <style>
     body { 
       margin: 0; 
@@ -12,7 +11,6 @@
       background: #f0f2f5; 
       display: flex; 
       justify-content: center; 
-      align-items: flex-start; 
       padding: 20px;
       min-height: 100vh;
     }
@@ -20,9 +18,9 @@
     .container {
       display: flex;
       gap: 20px;
-      width: 100%;
-      max-width: 1366px;
       flex-wrap: wrap;
+      max-width: 1366px;
+      width: 100%;
     }
 
     .calendar-box {
@@ -37,7 +35,6 @@
     }
 
     .header {
-      background: #007b83;
       color: white;
       text-align: center;
       font-size: 1.6em;
@@ -45,21 +42,23 @@
       padding: 10px;
     }
 
-    .header.nuoriso {
-      background: #ff8114;
-    }
+    .header.miehistö { background: #007b83; }
+    .header.nuoriso { background: #ff8114; }
 
-    .calendar {
+    iframe {
       flex: 1;
+      border: 0;
+      width: 100%;
+      min-height: 600px;
     }
 
     @media (max-width: 1024px) {
       .container { flex-direction: column; }
-      .calendar-box { min-height: 500px; }
+      iframe { min-height: 500px; }
     }
 
     @media (max-width: 600px) {
-      .calendar-box { min-height: 400px; }
+      iframe { min-height: 400px; }
       .header { font-size: 1.4em; padding: 8px; }
     }
   </style>
@@ -69,56 +68,16 @@
   <div class="container">
     <!-- Miehistö -->
     <div class="calendar-box">
-      <div class="header">Miehistö</div>
-      <div id="calendar-miehistö" class="calendar"></div>
+      <div class="header miehistö">Miehistö</div>
+      <iframe src="https://calendar.google.com/calendar/embed?src=6fdpm0662hoerp1shdfdjskdbbei1dfe%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
     </div>
 
     <!-- Nuoriso-osasto -->
     <div class="calendar-box">
       <div class="header nuoriso">Nuoriso-osasto</div>
-      <div id="calendar-nuoriso" class="calendar"></div>
+      <iframe src="https://calendar.google.com/calendar/embed?src=pfibgctlru8apgqvhrhcq1jbnod644un%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
     </div>
   </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
-  <script>
-    function createCalendar(elementId, icalUrl, color) {
-      var calendarEl = document.getElementById(elementId);
-      var calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        height: 'auto',
-        headerToolbar: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,timeGridWeek,timeGridDay'
-        },
-        events: {
-          url: icalUrl,
-          format: 'ics',
-          failure: function() { alert('Kalenterin lataus epäonnistui: ' + elementId); }
-        },
-        eventColor: color,
-        eventTextColor: 'white',
-        eventDisplay: 'block',
-        eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false }
-      });
-      calendar.render();
-    }
-
-    // Miehistö
-    createCalendar(
-      'calendar-miehistö',
-      'https://calendar.google.com/calendar/ical/6fdpm0662hoerp1shdfdjskdbbei1dfe%40import.calendar.google.com/public/basic.ics',
-      '#007b83'
-    );
-
-    // Nuoriso-osasto
-    createCalendar(
-      'calendar-nuoriso',
-      'https://calendar.google.com/calendar/ical/pfibgctlru8apgqvhrhcq1jbnod644un%40import.calendar.google.com/public/basic.ics',
-      '#ff8114'
-    );
-  </script>
 
 </body>
 </html>
