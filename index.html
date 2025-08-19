@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aulan kalenterit</title>
   <style>
-    body { 
-      margin: 0; 
-      font-family: Arial, sans-serif; 
-      background: #f0f2f5; 
-      display: flex; 
-      justify-content: center; 
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
       padding: 20px;
       min-height: 100vh;
     }
@@ -28,10 +28,9 @@
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      overflow: hidden;
       display: flex;
       flex-direction: column;
-      min-height: 600px;
+      overflow: hidden;
     }
 
     .header {
@@ -45,39 +44,65 @@
     .header.miehistö { background: #007b83; }
     .header.nuoriso { background: #ff8114; }
 
+    .events-list {
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .events-list div {
+      margin-bottom: 8px;
+      font-size: 1em;
+    }
+
     iframe {
       flex: 1;
       border: 0;
       width: 100%;
-      min-height: 600px;
+      min-height: 400px;
     }
 
     @media (max-width: 1024px) {
       .container { flex-direction: column; }
-      iframe { min-height: 500px; }
+      iframe { min-height: 350px; }
+      .events-list { max-height: 150px; }
     }
 
     @media (max-width: 600px) {
-      iframe { min-height: 400px; }
+      iframe { min-height: 300px; }
       .header { font-size: 1.4em; padding: 8px; }
+      .events-list div { font-size: 0.9em; }
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <!-- Miehistö -->
-    <div class="calendar-box">
-      <div class="header miehistö">Miehistö</div>
-      <iframe src="https://calendar.google.com/calendar/embed?src=6fdpm0662hoerp1shdfdjskdbbei1dfe%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
-    </div>
+<div class="container">
 
-    <!-- Nuoriso-osasto -->
-    <div class="calendar-box">
-      <div class="header nuoriso">Nuoriso-osasto</div>
-      <iframe src="https://calendar.google.com/calendar/embed?src=pfibgctlru8apgqvhrhcq1jbnod644un%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
+  <!-- Miehistö -->
+  <div class="calendar-box">
+    <div class="header miehistö">Miehistö</div>
+    <div class="events-list" id="miehisto-events">
+      <!-- Tulevat tapahtumat tulevat tänne -->
+      <div>Turnaus 18.8–21.8 – Miehistön harjoitus</div>
+      <div>Normaali harjoitus 19.8 – Miehistö</div>
     </div>
+    <iframe src="https://calendar.google.com/calendar/embed?src=6fdpm0662hoerp1shdfdjskdbbei1dfe%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
   </div>
+
+  <!-- Nuoriso-osasto -->
+  <div class="calendar-box">
+    <div class="header nuoriso">Nuoriso-osasto</div>
+    <div class="events-list" id="nuoriso-events">
+      <!-- Tulevat tapahtumat tulevat tänne -->
+      <div>Harjoitus 18.8 – Nuoriso-osasto</div>
+      <div>Pikkujouluharjoitus 20.8 – Nuoriso-osasto</div>
+    </div>
+    <iframe src="https://calendar.google.com/calendar/embed?src=pfibgctlru8apgqvhrhcq1jbnod644un%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
+  </div>
+
+</div>
 
 </body>
 </html>
