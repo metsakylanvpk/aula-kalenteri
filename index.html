@@ -157,33 +157,36 @@ body {
 </div>
 
 <script>
-// Esimerkkidata yläosan tapahtumille (JSON tai Google Calendar APIsta)
-const miehistoEvents = [
-  { title: "Harkka", start: "19.8.2025", end: "19.8.2025", description: "Jatkuva harjoitus" },
-  { title: "Turnaus", start: "21.8.2025", end: "23.8.2025", description: "Kesäinen kilpailu" }
-];
+// Google Calendar API avain ja Calendar ID:t
+const API_KEY = 'AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs';
+const MIEHISTO_CALENDAR_ID = '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com';
+const NUORISO_CALENDAR_ID = 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.google.com';
 
-const nuorisoEvents = [
-  { title: "Nuorten harjoitus", start: "20.8.2025", end: "20.8.2025", description: "Paikalla 18-21" }
-];
+function fetchEvents(calendarId) {
+  const now = new Date().toISOString();
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=20`;
+  return fetch(url).then(res => res.json());
+}
 
 function renderEvent(containerId, events) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
   events.forEach(item => {
+    const start = item.start.dateTime ? new Date(item.start.dateTime).toLocaleString('fi-FI') : item.start.date;
+    const end = item.end.dateTime ? new Date(item.end.dateTime).toLocaleString('fi-FI') : item.end.date;
     const html = `
       <div class="event-card">
-        <div class="event-date">${item.start}${item.end && item.end !== item.start ? ' – ' + item.end : ''}</div>
-        <div class="event-title">${item.title}</div>
+        <div class="event-date">${start}${start!==end ? ' – ' + end : ''}</div>
+        <div class="event-title">${item.summary}</div>
         ${item.description ? `<div class="event-description">${item.description}</div>` : ''}
       </div>`;
     container.innerHTML += html;
   });
 }
 
-// Renderöidään tapahtumat
-renderEvent('miehisto-events', miehistoEvents);
-renderEvent('nuoriso-events', nuorisoEvents);
+// Hae ja renderöi tapahtumat
+fetchEvents(MIEHISTO_CALENDAR_ID).then(data => renderEvent('miehisto-events', data.items));
+fetchEvents(NUORISO_CALENDAR_ID).then(data => renderEvent('nuoriso-events', data.items));
 
 // Automaattinen päivitys 15 minuutin välein
 setTimeout(() => location.reload(), 15 * 60 * 1000);
