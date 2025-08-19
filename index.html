@@ -28,6 +28,7 @@ body {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
+  flex: 3; /* suurempi painoala */
 }
 
 .calendar-box {
@@ -50,13 +51,13 @@ body {
   letter-spacing: 1px;
 }
 
-/* Nuoriso-osaston väri */
 .header.nuoriso {
   background: #ff8114;
 }
 
-/* Iframejen alaosa */
-iframe {
+.top-container .calendar-box iframe {
+  flex: 1;
+  min-height: 500px; /* suurempi korkeus yläosaan */
   width: 100%;
   border: none;
 }
@@ -66,10 +67,13 @@ iframe {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
+  flex: 1; /* pienempi painoala */
 }
 
 .bottom-container .calendar-box iframe {
-  height: 300px; /* pienempi korkeus */
+  height: 250px; /* pienempi korkeus alaosaan */
+  width: 100%;
+  border: none;
 }
 
 /* Responsiivisuus */
@@ -77,14 +81,22 @@ iframe {
   .top-container, .bottom-container {
     flex-direction: column;
   }
-  .calendar-box iframe {
-    height: 250px;
+  .top-container .calendar-box iframe {
+    min-height: 400px;
+  }
+  .bottom-container .calendar-box iframe {
+    height: 200px;
   }
 }
 
 @media (max-width: 600px) {
   .header { font-size: 1.4em; padding: 10px; }
-  .calendar-box iframe { height: 180px; }
+  .top-container .calendar-box iframe {
+    min-height: 300px;
+  }
+  .bottom-container .calendar-box iframe {
+    height: 150px;
+  }
 }
 </style>
 </head>
