@@ -1,80 +1,93 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aulan kalenterit</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f0f2f5;
-      display: flex;
-      justify-content: center;
-      padding: 20px;
-      min-height: 100vh;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aulan kalenterit</title>
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f0f2f5;
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  min-height: 100vh;
+}
 
-    .container {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      max-width: 1366px;
-      width: 100%;
-    }
+.container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  max-width: 1366px;
+  width: 100%;
+}
 
-    .calendar-box {
-      flex: 1 1 600px;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+.calendar-box {
+  flex: 1 1 600px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-    .header {
-      color: white;
-      text-align: center;
-      font-size: 1.6em;
-      font-weight: bold;
-      padding: 10px;
-    }
+.header {
+  color: white;
+  text-align: center;
+  font-size: 1.6em;
+  font-weight: bold;
+  padding: 10px;
+}
 
-    .header.miehistö { background: #007b83; }
-    .header.nuoriso { background: #ff8114; }
+.header.miehistö { background: #007b83; }
+.header.nuoriso { background: #ff8114; }
 
-    .events-list {
-      padding: 10px;
-      max-height: 200px;
-      overflow-y: auto;
-      border-bottom: 1px solid #ccc;
-    }
+.events-list {
+  padding: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #e6f2f5;
+  border-bottom: 1px solid #ccc;
+}
 
-    .events-list div {
-      margin-bottom: 8px;
-      font-size: 1em;
-    }
+.event-item {
+  margin-bottom: 10px;
+  font-size: 1em;
+}
 
-    iframe {
-      flex: 1;
-      border: 0;
-      width: 100%;
-      min-height: 400px;
-    }
+.event-item .date {
+  font-weight: bold;
+  margin-right: 5px;
+}
 
-    @media (max-width: 1024px) {
-      .container { flex-direction: column; }
-      iframe { min-height: 350px; }
-      .events-list { max-height: 150px; }
-    }
+.event-item .description {
+  font-style: italic;
+  display: block;
+  font-size: 0.9em;
+  color: #555;
+}
 
-    @media (max-width: 600px) {
-      iframe { min-height: 300px; }
-      .header { font-size: 1.4em; padding: 8px; }
-      .events-list div { font-size: 0.9em; }
-    }
-  </style>
+iframe {
+  flex: 1;
+  border: 0;
+  width: 100%;
+  min-height: 300px;
+}
+
+@media (max-width: 1024px) {
+  .container { flex-direction: column; }
+  iframe { min-height: 250px; }
+  .events-list { max-height: 180px; }
+}
+
+@media (max-width: 600px) {
+  iframe { min-height: 200px; }
+  .header { font-size: 1.4em; padding: 8px; }
+  .event-item { font-size: 0.9em; }
+}
+</style>
 </head>
 <body>
 
@@ -125,13 +138,18 @@ function fetchEvents(calendarId, elementId) {
         const dateStr = start.toLocaleDateString('fi-FI', { day: '2-digit', month: '2-digit' });
         const timeStr = item.start.dateTime ? start.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' }) : '';
         const title = item.summary || '(nimi puuttuu)';
-        container.innerHTML += `<div>${dateStr} ${timeStr} – ${title}</div>`;
+        const description = item.description ? item.description : '';
+        container.innerHTML += `
+          <div class="event-item">
+            <span class="date">${dateStr} ${timeStr}</span> – <span class="title">${title}</span>
+            ${description ? `<span class="description">${description}</span>` : ''}
+          </div>
+        `;
       });
     })
     .catch(err => console.error('Kalenterin haku epäonnistui:', err));
 }
 
-// Hae tapahtumat kaikille kalentereille
 CALENDARS.forEach(cal => fetchEvents(cal.id, cal.elementId));
 </script>
 
