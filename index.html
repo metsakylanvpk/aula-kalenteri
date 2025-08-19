@@ -167,8 +167,8 @@ function cleanTitle(title) {
   return title.trim(); // jos ei erottajaa, palautetaan koko nimi
 }
 
-function getDateColor(title) {
-  const t = title.toLowerCase().trim();
+function getDateColor(originalTitle) {
+  const t = originalTitle.toLowerCase().trim();
   
   // Kalustoesittely = vihreä
   if (t.includes("kalustoesittely")) return "#4CAF50";
@@ -182,11 +182,15 @@ function getDateColor(title) {
   // Juhla/Muu = punainen
   if (t.includes("juhla") || t.includes("muu")) return "#F44336";
   
+  // Myrskyvauriot = tummanharmaa
+  if (t.includes("myrskyvauriot")) return "#555";
+  
   // Oletusväri
-  return "#555";
+  return "#888";
 }
 
 function stripLinks(html) {
+  if (!html) return '';
   const div = document.createElement('div');
   div.innerHTML = html;
   div.querySelectorAll('a').forEach(a => a.remove());
@@ -220,26 +224,44 @@ function fetchEvents(calendarId) {
 
 function renderEvent(containerId, events) {
   const container = document.getElementById(containerId);
+  if (!container) return;
+  
   container.innerHTML = '';
+  
+  if (!events || events.length === 0) {
+    container.innerHTML = '<div class="event-card"><div class="event-title">Ei tulevia tapahtumia</div></div>';
+    return;
+  }
+  
   events.forEach(item => {
     const start = item.start.dateTime || item.start.date;
     const end = item.end.dateTime || item.end.date;
-    const title = cleanTitle(item.summary);
-    const dateColor = getDateColor(title);
+    const originalTitle = item.summary || 'Nimetön tapahtuma';
+    const cleanTitleText = cleanTitle(originalTitle);
+    const dateColor = getDateColor(originalTitle); // Käytetään alkuperäistä nimeä värien määrittelyyn
     const description = item.description ? stripLinks(item.description) : '';
+    
     const html = `
       <div class="event-card">
         <div class="event-date" style="background:${dateColor}">${formatEventDate(start, end)}</div>
-        <div class="event-title">${title}</div>
+        <div class="event-title">${cleanTitleText}</div>
         ${description ? `<div class="event-description">${description}</div>` : ''}
       </div>`;
     container.innerHTML += html;
   });
 }
 
-fetchEvents(MIEHISTO_CALENDAR_ID).then(data => renderEvent('miehisto-events', data.items));
-fetchEvents(NUORISO_CALENDAR_ID).then(data => renderEvent('nuoriso-events', data.items));
+// Ladataan tapahtumat ja renderöidään ne
+Promise.all([
+  fetchEvents(MIEHISTO_CALENDAR_ID).then(data => renderEvent('miehisto-events', data.items)),
+  fetchEvents(NUORISO_CALENDAR_ID).then(data => renderEvent('nuoriso-events', data.items))
+]).catch(error => {
+  console.error('Virhe tapahtumien haussa:', error);
+  document.getElementById('miehisto-events').innerHTML = '<div class="event-card"><div class="event-title">Virhe tapahtumien latauksessa</div></div>';
+  document.getElementById('nuoriso-events').innerHTML = '<div class="event-card"><div class="event-title">Virhe tapahtumien latauksessa</div></div>';
+});
 
+// Päivitetään sivua 15 minuutin välein
 setTimeout(() => location.reload(), 15 * 60 * 1000);
 </script>
 
