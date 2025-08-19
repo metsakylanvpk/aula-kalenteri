@@ -52,21 +52,36 @@ body {
   border-bottom: 1px solid #ccc;
 }
 
-.event-item {
+.event-card {
+  display: flex;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
   margin-bottom: 10px;
-  font-size: 1em;
+  padding: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-.event-item .date {
+.event-date {
   font-weight: bold;
-  margin-right: 5px;
+  min-width: 70px;
+  color: #007b83;
+  flex-shrink: 0;
 }
 
-.event-item .description {
-  font-style: italic;
-  display: block;
+.event-content {
+  flex: 1;
+  word-wrap: break-word;
+}
+
+.event-title {
+  font-weight: bold;
+}
+
+.event-description {
   font-size: 0.9em;
   color: #555;
+  margin-top: 3px;
 }
 
 iframe {
@@ -85,7 +100,8 @@ iframe {
 @media (max-width: 600px) {
   iframe { min-height: 150px; }
   .header { font-size: 1.4em; padding: 8px; }
-  .event-item { font-size: 0.9em; }
+  .event-title { font-size: 0.95em; }
+  .event-description { font-size: 0.85em; }
 }
 </style>
 </head>
@@ -123,14 +139,12 @@ const CALENDARS = [
   }
 ];
 
-// Tiukka sanitointi: poistaa kaiken HTML:n ja URL-linkit
+// Puhdistaa tekstin, poistaa HTML ja URL-linkit
 function sanitizeText(text) {
   if (!text) return '';
-  // Poistaa kaikki HTML-tagit
   let div = document.createElement('div');
   div.innerHTML = text;
   let clean = div.textContent || div.innerText || '';
-  // Poistaa URLit
   return clean.replace(/https?:\/\/\S+/g, '');
 }
 
@@ -146,14 +160,20 @@ function fetchEvents(calendarId, elementId) {
 
       data.items.forEach(item => {
         const start = new Date(item.start.dateTime || item.start.date);
+        const end = new Date(item.end.dateTime || item.end.date);
         const dateStr = start.toLocaleDateString('fi-FI', { day: '2-digit', month: '2-digit' });
+        const endStr = end.toLocaleDateString('fi-FI', { day: '2-digit', month: '2-digit' });
         const timeStr = item.start.dateTime ? start.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' }) : '';
         const title = sanitizeText(item.summary || '(nimi puuttuu)');
         const description = item.description ? sanitizeText(item.description) : '';
+
         container.innerHTML += `
-          <div class="event-item">
-            <span class="date">${dateStr} ${timeStr}</span> – <span class="title">${title}</span>
-            ${description ? `<span class="description">${description}</span>` : ''}
+          <div class="event-card">
+            <div class="event-date">${dateStr}${endStr && endStr !== dateStr ? ' – ' + endStr : ''} ${timeStr}</div>
+            <div class="event-content">
+              <div class="event-title">${title}</div>
+              ${description ? `<div class="event-description">${description}</div>` : ''}
+            </div>
           </div>
         `;
       });
