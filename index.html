@@ -85,8 +85,6 @@
     <div class="header miehistö">Miehistö</div>
     <div class="events-list" id="miehisto-events">
       <!-- Tulevat tapahtumat tulevat tänne -->
-      <div>Turnaus 18.8–21.8 – Miehistön harjoitus</div>
-      <div>Normaali harjoitus 19.8 – Miehistö</div>
     </div>
     <iframe src="https://calendar.google.com/calendar/embed?src=6fdpm0662hoerp1shdfdjskdbbei1dfe%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
   </div>
@@ -96,13 +94,49 @@
     <div class="header nuoriso">Nuoriso-osasto</div>
     <div class="events-list" id="nuoriso-events">
       <!-- Tulevat tapahtumat tulevat tänne -->
-      <div>Harjoitus 18.8 – Nuoriso-osasto</div>
-      <div>Pikkujouluharjoitus 20.8 – Nuoriso-osasto</div>
     </div>
     <iframe src="https://calendar.google.com/calendar/embed?src=pfibgctlru8apgqvhrhcq1jbnod644un%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
   </div>
 
 </div>
+
+<script>
+const CALENDARS = [
+  {
+    id: '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com',
+    elementId: 'miehisto-events'
+  },
+  {
+    id: 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.google.com',
+    elementId: 'nuoriso-events'
+  }
+];
+
+function fetchEvents(calendarId, elementId) {
+  // Google Calendar JSON feed URL (julkaistu kalenteri)
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=AIzaSyD4-xxxxxxx&timeMin=${new Date().toISOString()}&singleEvents=true&orderBy=startTime&maxResults=10`;
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      const container = document.getElementById(elementId);
+      container.innerHTML = '';
+      if (!data.items) return;
+
+      data.items.forEach(item => {
+        const start = new Date(item.start.dateTime || item.start.date);
+        const dateStr = start.toLocaleDateString('fi-FI', { day: '2-digit', month: '2-digit' });
+        const timeStr = item.start.dateTime ? start.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' }) : '';
+        const title = item.summary || '(nimi puuttuu)';
+        container.innerHTML += `<div>${dateStr} ${timeStr} – ${title}</div>`;
+      });
+    })
+    .catch(err => console.error('Kalenterin haku epäonnistui:', err));
+}
+
+// Hae tapahtumat kaikille kalentereille
+CALENDARS.forEach(cal => fetchEvents(cal.id, cal.elementId));
+</script>
 
 </body>
 </html>
