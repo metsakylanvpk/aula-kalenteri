@@ -2,106 +2,89 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aulan kalenterit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f0f2f5;
+  background: linear-gradient(135deg, #f9f9f9, #e9eef3);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   padding: 20px;
-  min-height: 100vh;
 }
 
 .container {
   display: flex;
+  flex-direction: column;
+  width: 95%;
+  max-width: 1366px;
+  gap: 20px;
+}
+
+/* Yläosan tapahtumat */
+.top-container {
+  display: flex;
   gap: 20px;
   flex-wrap: wrap;
-  max-width: 1366px;
-  width: 100%;
 }
 
 .calendar-box {
-  flex: 1 1 600px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  flex: 1;
   display: flex;
   flex-direction: column;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   overflow: hidden;
 }
 
 .header {
-  color: white;
+  background: #007b83;
+  color: #fff;
   text-align: center;
   font-size: 1.6em;
-  font-weight: bold;
-  padding: 10px;
+  padding: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
-.header.miehistö { background: #007b83; }
-.header.nuoriso { background: #ff8114; }
-
-.events-list {
-  padding: 10px;
-  max-height: 300px;
-  overflow-y: auto;
-  background: #e6f2f5;
-  border-bottom: 1px solid #ccc;
+/* Nuoriso-osaston väri */
+.header.nuoriso {
+  background: #ff8114;
 }
 
-.event-card {
-  display: flex;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #fff;
-  margin-bottom: 10px;
-  padding: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-
-.event-date {
-  font-weight: bold;
-  min-width: 70px;
-  color: #007b83;
-  flex-shrink: 0;
-}
-
-.event-content {
-  flex: 1;
-  word-wrap: break-word;
-}
-
-.event-title {
-  font-weight: bold;
-}
-
-.event-description {
-  font-size: 0.9em;
-  color: #555;
-  margin-top: 3px;
-}
-
+/* Iframejen alaosa */
 iframe {
-  flex: 1;
-  border: 0;
   width: 100%;
-  min-height: 200px;
+  border: none;
 }
 
+/* Alaosan kuukausikalenterit */
+.bottom-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.bottom-container .calendar-box iframe {
+  height: 300px; /* pienempi korkeus */
+}
+
+/* Responsiivisuus */
 @media (max-width: 1024px) {
-  .container { flex-direction: column; }
-  iframe { min-height: 180px; }
-  .events-list { max-height: 250px; }
+  .top-container, .bottom-container {
+    flex-direction: column;
+  }
+  .calendar-box iframe {
+    height: 250px;
+  }
 }
 
 @media (max-width: 600px) {
-  iframe { min-height: 150px; }
-  .header { font-size: 1.4em; padding: 8px; }
-  .event-title { font-size: 0.95em; }
-  .event-description { font-size: 0.85em; }
+  .header { font-size: 1.4em; padding: 10px; }
+  .calendar-box iframe { height: 180px; }
 }
 </style>
 </head>
@@ -109,79 +92,41 @@ iframe {
 
 <div class="container">
 
-  <!-- Miehistö -->
-  <div class="calendar-box">
-    <div class="header miehistö">Miehistö</div>
-    <div class="events-list" id="miehisto-events"></div>
-    <iframe src="https://calendar.google.com/calendar/embed?src=6fdpm0662hoerp1shdfdjskdbbei1dfe%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
+  <!-- Yläosan tapahtumat -->
+  <div class="top-container">
+
+    <div class="calendar-box">
+      <div class="header">Miehistö</div>
+      <iframe src="https://metsakylanvpk.nimenhuuto.com/calendar/widget_iframe_events?css=&height=700&width=650"></iframe>
+    </div>
+
+    <div class="calendar-box">
+      <div class="header nuoriso">Nuoriso-osasto</div>
+      <iframe src="https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/widget_iframe_events?css=&height=700&width=650"></iframe>
+    </div>
+
   </div>
 
-  <!-- Nuoriso-osasto -->
-  <div class="calendar-box">
-    <div class="header nuoriso">Nuoriso-osasto</div>
-    <div class="events-list" id="nuoriso-events"></div>
-    <iframe src="https://calendar.google.com/calendar/embed?src=pfibgctlru8apgqvhrhcq1jbnod644un%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
+  <!-- Alaosan kuukausikalenterit -->
+  <div class="bottom-container">
+
+    <div class="calendar-box">
+      <div class="header">Miehistö Kalenteri</div>
+      <iframe src="https://metsakylanvpk.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
+    </div>
+
+    <div class="calendar-box">
+      <div class="header nuoriso">Nuoriso-osasto Kalenteri</div>
+      <iframe src="https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
+    </div>
+
   </div>
 
 </div>
 
 <script>
-const API_KEY = "AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs";
-
-const CALENDARS = [
-  {
-    id: '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com',
-    elementId: 'miehisto-events'
-  },
-  {
-    id: 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.google.com',
-    elementId: 'nuoriso-events'
-  }
-];
-
-// Puhdistaa tekstin, poistaa HTML ja URL-linkit
-function sanitizeText(text) {
-  if (!text) return '';
-  let div = document.createElement('div');
-  div.innerHTML = text;
-  let clean = div.textContent || div.innerText || '';
-  return clean.replace(/https?:\/\/\S+/g, '');
-}
-
-function fetchEvents(calendarId, elementId) {
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${API_KEY}&timeMin=${new Date().toISOString()}&singleEvents=true&orderBy=startTime&maxResults=20`;
-
-  fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      const container = document.getElementById(elementId);
-      container.innerHTML = '';
-      if (!data.items) return;
-
-      data.items.forEach(item => {
-        const start = new Date(item.start.dateTime || item.start.date);
-        const end = new Date(item.end.dateTime || item.end.date);
-        const dateStr = start.toLocaleDateString('fi-FI', { day: '2-digit', month: '2-digit' });
-        const endStr = end.toLocaleDateString('fi-FI', { day: '2-digit', month: '2-digit' });
-        const timeStr = item.start.dateTime ? start.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' }) : '';
-        const title = sanitizeText(item.summary || '(nimi puuttuu)');
-        const description = item.description ? sanitizeText(item.description) : '';
-
-        container.innerHTML += `
-          <div class="event-card">
-            <div class="event-date">${dateStr}${endStr && endStr !== dateStr ? ' – ' + endStr : ''} ${timeStr}</div>
-            <div class="event-content">
-              <div class="event-title">${title}</div>
-              ${description ? `<div class="event-description">${description}</div>` : ''}
-            </div>
-          </div>
-        `;
-      });
-    })
-    .catch(err => console.error('Kalenterin haku epäonnistui:', err));
-}
-
-CALENDARS.forEach(cal => fetchEvents(cal.id, cal.elementId));
+  // Automaattinen päivitys 15 minuutin välein
+  setTimeout(() => location.reload(), 15 * 60 * 1000);
 </script>
 
 </body>
