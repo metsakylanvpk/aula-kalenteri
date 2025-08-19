@@ -158,8 +158,7 @@ const NUORISO_CALENDAR_ID = 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.go
 
 function cleanTitle(title) {
   return title
-    .replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '')
-    .replace(/^Metsäkylän VPK Nuoriso-osasto\s*[-–:]?\s*/i, '');
+    return title.replace(/^(Metsäkylän VPK.*?)(\s*[-–:]?\s*)/i, '');
 }
 
 function getDateColor(title) {
@@ -229,3 +228,4 @@ setTimeout(() => location.reload(), 15 * 60 * 1000);
 
 </body>
 </html>
+
