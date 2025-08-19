@@ -83,24 +83,22 @@
   <!-- Miehistö -->
   <div class="calendar-box">
     <div class="header miehistö">Miehistö</div>
-    <div class="events-list" id="miehisto-events">
-      <!-- Tulevat tapahtumat tulevat tänne -->
-    </div>
+    <div class="events-list" id="miehisto-events"></div>
     <iframe src="https://calendar.google.com/calendar/embed?src=6fdpm0662hoerp1shdfdjskdbbei1dfe%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
   </div>
 
   <!-- Nuoriso-osasto -->
   <div class="calendar-box">
     <div class="header nuoriso">Nuoriso-osasto</div>
-    <div class="events-list" id="nuoriso-events">
-      <!-- Tulevat tapahtumat tulevat tänne -->
-    </div>
+    <div class="events-list" id="nuoriso-events"></div>
     <iframe src="https://calendar.google.com/calendar/embed?src=pfibgctlru8apgqvhrhcq1jbnod644un%40import.calendar.google.com&ctz=Europe%2FHelsinki"></iframe>
   </div>
 
 </div>
 
 <script>
+const API_KEY = "AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs";
+
 const CALENDARS = [
   {
     id: '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com',
@@ -113,8 +111,7 @@ const CALENDARS = [
 ];
 
 function fetchEvents(calendarId, elementId) {
-  // Google Calendar JSON feed URL (julkaistu kalenteri)
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs}/events?key=AIzaSyD4-xxxxxxx&timeMin=${new Date().toISOString()}&singleEvents=true&orderBy=startTime&maxResults=10`;
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${API_KEY}&timeMin=${new Date().toISOString()}&singleEvents=true&orderBy=startTime&maxResults=10`;
 
   fetch(url)
     .then(res => res.json())
@@ -140,4 +137,3 @@ CALENDARS.forEach(cal => fetchEvents(cal.id, cal.elementId));
 
 </body>
 </html>
-
