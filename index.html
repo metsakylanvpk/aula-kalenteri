@@ -1,133 +1,230 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-  <meta charset="UTF-8">
-  <title>Metsäkylän VPK Tapahtumat</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f7f7f7;
-      margin: 0;
-      padding: 20px;
-    }
-    h2 {
-      margin-top: 0;
-    }
-    .event {
-      background: #fff;
-      padding: 12px;
-      margin: 10px 0;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .date {
-      font-weight: bold;
-      font-size: 18px;
-      margin-bottom: 6px;
-    }
-    .title {
-      font-size: 16px;
-    }
-    .description {
-      font-size: 14px;
-      color: #444;
-      margin-top: 4px;
-    }
-    /* Värikoodaus päivämäärälle */
-    .harjoitus .date { color: green; }
-    .peli .date { color: blue; }
-    .kokous .date { color: orange; }
-    .muu .date { color: gray; }
-  </style>
+<meta charset="UTF-8">
+<title>Aulan kalenterit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+  margin: 0;
+  background: linear-gradient(135deg, #f9f9f9, #e9eef3);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 95%;
+  max-width: 1366px;
+  gap: 20px;
+}
+
+/* Yläosan tapahtumat */
+.top-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.calendar-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.header {
+  text-align: center;
+  font-size: 1.6em;
+  padding: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #fff;
+}
+
+.header.miehistö { background: #007b83; }
+.header.nuoriso { background: #ff8114; }
+
+/* Tapahtumakortit */
+.events-list {
+  padding: 10px;
+  background: #e6f2f5;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.event-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+
+.event-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.event-date {
+  font-weight: bold;
+  color: #007b83;
+  margin-bottom: 4px;
+}
+
+.event-title {
+  font-weight: bold;
+  word-wrap: break-word;
+}
+
+.event-description {
+  font-size: 0.9em;
+  color: #555;
+  margin-top: 4px;
+  word-wrap: break-word;
+}
+
+/* Alaosan kalenterit */
+.bottom-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.bottom-container .calendar-box iframe {
+  height: 250px;
+  width: 100%;
+  border: none;
+}
+
+/* Responsiivisuus */
+@media (max-width: 1024px) {
+  .top-container, .bottom-container { flex-direction: column; }
+  .events-list { max-height: 400px; }
+  .bottom-container .calendar-box iframe { height: 200px; }
+}
+
+@media (max-width: 600px) {
+  .header { font-size: 1.4em; padding: 10px; }
+  .events-list { max-height: 300px; }
+  .bottom-container .calendar-box iframe { height: 150px; }
+}
+</style>
 </head>
 <body>
-  <h2>Tulevat tapahtumat</h2>
-  <div id="events"></div>
 
-  <script>
-    const feeds = [
-      "https://corsproxy.io/?" + encodeURIComponent("https://metsakylanvpk.nimenhuuto.com/calendar/ical"),
-      "https://corsproxy.io/?" + encodeURIComponent("https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/ical")
-    ];
+<div class="container">
 
-    async function loadICS(url) {
-      const res = await fetch(url);
-      return res.text();
-    }
+  <!-- Yläosan tapahtumat -->
+  <div class="top-container">
 
-    function parseICS(ics) {
-      const events = [];
-      const lines = ics.split(/\r?\n/);
-      let event = null;
+    <div class="calendar-box">
+      <div class="header miehistö">Miehistö</div>
+      <div class="events-list" id="miehisto-events"></div>
+    </div>
 
-      lines.forEach(line => {
-        if (line.startsWith("BEGIN:VEVENT")) {
-          event = {};
-        } else if (line.startsWith("END:VEVENT")) {
-          if (event) events.push(event);
-          event = null;
-        } else if (event) {
-          if (line.startsWith("DTSTART")) {
-            event.start = parseDate(line.split(":")[1]);
-          }
-          if (line.startsWith("DTEND")) {
-            event.end = parseDate(line.split(":")[1]);
-          }
-          if (line.startsWith("SUMMARY")) {
-            event.title = line.split(":")[1];
-          }
-          if (line.startsWith("DESCRIPTION")) {
-            event.description = line.split(":")[1];
-          }
-        }
-      });
-      return events;
-    }
+    <div class="calendar-box">
+      <div class="header nuoriso">Nuoriso-osasto</div>
+      <div class="events-list" id="nuoriso-events"></div>
+    </div>
 
-    function parseDate(str) {
-      return new Date(
-        str.substring(0,4),
-        str.substring(4,6)-1,
-        str.substring(6,8),
-        str.substring(9,11)||0,
-        str.substring(11,13)||0
-      );
-    }
+  </div>
 
-    function categorize(title) {
-      title = title.toLowerCase();
-      if (title.includes("harkka") || title.includes("harjoitus")) return "harjoitus";
-      if (title.includes("peli") || title.includes("ottelu")) return "peli";
-      if (title.includes("kokous")) return "kokous";
-      return "muu";
-    }
+  <!-- Alaosan kuukausikalenterit -->
+  <div class="bottom-container">
 
-    async function showEvents() {
-      let allEvents = [];
-      for (let feed of feeds) {
-        const ics = await loadICS(feed);
-        allEvents = allEvents.concat(parseICS(ics));
-      }
+    <div class="calendar-box">
+      <div class="header miehistö">Miehistö Kalenteri</div>
+      <iframe src="https://metsakylanvpk.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
+    </div>
 
-      allEvents.sort((a,b) => a.start - b.start);
+    <div class="calendar-box">
+      <div class="header nuoriso">Nuoriso-osasto Kalenteri</div>
+      <iframe src="https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
+    </div>
 
-      const container = document.getElementById("events");
-      container.innerHTML = "";
+  </div>
 
-      allEvents.slice(0,10).forEach(ev => {
-        const div = document.createElement("div");
-        div.className = "event " + categorize(ev.title);
+</div>
 
-        div.innerHTML = `
-          <div class="date">${ev.start.toLocaleDateString("fi-FI")} ${ev.start.toLocaleTimeString("fi-FI",{hour:"2-digit",minute:"2-digit"})} - ${ev.end.toLocaleTimeString("fi-FI",{hour:"2-digit",minute:"2-digit"})}</div>
-          <div class="title">${ev.title.replace(/^Metsäkylän VPK( Nuoriso-osasto)?:\s*/,"")}</div>
-          <div class="description">${ev.description ? ev.description.replace(/https?:\/\/\S+/g,"") : ""}</div>
-        `;
-        container.appendChild(div);
-      });
-    }
+<script>
+// Google Calendar API avain ja Calendar ID:t
+const API_KEY = 'AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs';
+const MIEHISTO_CALENDAR_ID = '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com';
+const NUORISO_CALENDAR_ID = 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.google.com';
 
-    showEvents();
-  </script>
+// Poistaa kalenterin nimen tapahtuman nimestä
+function cleanTitle(title) {
+  return title
+    .replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '')
+    .replace(/^Metsäkylän VPK Nuoriso-osasto\s*[-–:]?\s*/i, '');
+}
+
+// Määrittää tapahtumalle taustavärin otsikon mukaan
+function getEventColor(title) {
+// Määrittää päivämäärän värin otsikon mukaan
+function getDateColor(title) {
+  const t = title.toLowerCase();
+  if (t.includes("harkka") || t.includes("harjoitus")) return "#007b83"; // sininen
+  if (t.includes("turnaus") || t.includes("kilpailu") || t.includes("tapahtuma")) return "#4CAF50"; // vihreä
+  if (t.includes("juhla") || t.includes("muu")) return "#FF9800"; // oranssi
+  return "#e0e0e0"; // oletus
+  return "#555"; // oletus
+}
+
+// Poistaa kaikki linkit lisätiedoista
+function stripLinks(html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  div.querySelectorAll('a').forEach(a => a.remove());
+  return div.innerHTML;
+}
+
+function fetchEvents(calendarId) {
+  const now = new Date().toISOString();
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=20`;
+  return fetch(url).then(res => res.json());
+}
+
+function renderEvent(containerId, events) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  events.forEach(item => {
+    const start = item.start.dateTime ? new Date(item.start.dateTime).toLocaleString('fi-FI') : item.start.date;
+    const end = item.end.dateTime ? new Date(item.end.dateTime).toLocaleString('fi-FI') : item.end.date;
+    const title = cleanTitle(item.summary);
+    const bgColor = getEventColor(title);
+    const dateColor = getDateColor(title);
+    let description = item.description ? stripLinks(item.description) : '';
+    const html = `
+      <div class="event-card" style="background-color: ${bgColor};">
+        <div class="event-date">${start}${start!==end ? ' – ' + end : ''}</div>
+      <div class="event-card">
+        <div class="event-date" style="color:${dateColor}">${start}${start!==end ? ' – ' + end : ''}</div>
+        <div class="event-title">${title}</div>
+        ${item.description ? `<div class="event-description">${item.description}</div>` : ''}
+        ${description ? `<div class="event-description">${description}</div>` : ''}
+      </div>`;
+    container.innerHTML += html;
+  });
+}
+
+// Hae ja renderöi tapahtumat
+fetchEvents(MIEHISTO_CALENDAR_ID).then(data => renderEvent('miehisto-events', data.items));
+fetchEvents(NUORISO_CALENDAR_ID).then(data => renderEvent('nuoriso-events', data.items));
+
+// Automaattinen päivitys 15 minuutin välein
+setTimeout(() => location.reload(), 15 * 60 * 1000);
+</script>
+
 </body>
 </html>
