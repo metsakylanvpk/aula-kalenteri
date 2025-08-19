@@ -1,219 +1,184 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<meta charset="UTF-8">
-<title>Aulan kalenterit</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body {
-  margin: 0;
-  background: linear-gradient(135deg, #f9f9f9, #e9eef3);
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  padding: 20px;
-}
+  <meta charset="UTF-8">
+  <title>Aulan kalenterit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #f9f9f9, #e9eef3);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
-.container {
-  display: flex;
-  flex-direction: column;
-  width: 95%;
-  max-width: 1366px;
-  gap: 20px;
-}
+    .top {
+      flex: 1.2;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
 
-.top-container {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
+    .bottom {
+      flex: 0.8;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+    }
 
-.calendar-box {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-}
+    .calendar-box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+    }
 
-.header {
-  text-align: center;
-  font-size: 1.6em;
-  padding: 12px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: #fff;
-}
+    .header {
+      background: #007b83;
+      color: #fff;
+      text-align: center;
+      font-size: 1.6em;
+      padding: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
 
-.header.miehistö { background: #007b83; }
-.header.nuoriso { background: #ff8114; }
+    iframe {
+      flex: 1;
+      width: 100%;
+      border: none;
+    }
 
-.events-list {
-  padding: 10px;
-  background: #e6f2f5;
-  max-height: 500px;
-  overflow-y: auto;
-}
+    /* Tapahtumakortit */
+    .event-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
 
-.event-card {
-  display: flex;
-  flex-direction: column;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  padding: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  transition: transform 0.2s;
-  background: #fefefe;
-}
+    .event-date {
+      font-size: 1.1em;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
 
-.event-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
+    .event-title {
+      font-size: 1.3em;
+      margin-bottom: 6px;
+    }
 
-.event-date {
-  font-weight: bold;
-  margin-bottom: 4px;
-  font-size: 1em;
-}
+    .event-time {
+      font-size: 1em;
+      margin-bottom: 6px;
+    }
 
-.event-title {
-  font-weight: bold;
-  word-wrap: break-word;
-}
+    .event-desc {
+      font-size: 0.95em;
+      color: #444;
+    }
 
-.event-description {
-  font-size: 0.9em;
-  color: #555;
-  margin-top: 4px;
-  word-wrap: break-word;
-}
+    /* Värikoodaus päivämäärälle */
+    .harkka { color: green; }
+    .peli { color: red; }
+    .kokous { color: blue; }
+    .muu { color: gray; }
 
-.bottom-container {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.bottom-container .calendar-box iframe {
-  height: 250px;
-  width: 100%;
-  border: none;
-}
-
-@media (max-width: 1024px) {
-  .top-container, .bottom-container { flex-direction: column; }
-  .events-list { max-height: 400px; }
-  .bottom-container .calendar-box iframe { height: 200px; }
-}
-
-@media (max-width: 600px) {
-  .header { font-size: 1.4em; padding: 10px; }
-  .events-list { max-height: 300px; }
-  .bottom-container .calendar-box iframe { height: 150px; }
-}
-</style>
+  </style>
 </head>
 <body>
 
-<div class="container">
-
-  <div class="top-container">
-
-    <div class="calendar-box">
-      <div class="header miehistö">Miehistö</div>
-      <div class="events-list" id="miehisto-events"></div>
-    </div>
-
-    <div class="calendar-box">
-      <div class="header nuoriso">Nuoriso-osasto</div>
-      <div class="events-list" id="nuoriso-events"></div>
-    </div>
-
+  <!-- Yläosa: tapahtumalistat -->
+  <div class="top" id="events-container">
+    <h2 style="margin-bottom: 15px;">Tulevat tapahtumat</h2>
   </div>
 
-  <div class="bottom-container">
-
+  <!-- Alaosa: alkuperäiset widgetit -->
+  <div class="bottom">
     <div class="calendar-box">
-      <div class="header miehistö">Miehistö Kalenteri</div>
-      <iframe src="https://metsakylanvpk.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
+      <div class="header">Miehistö</div>
+      <iframe src="https://metsakylanvpk.nimenhuuto.com/calendar/widget_iframe_events?css=&height=700&width=650"></iframe>
     </div>
-
     <div class="calendar-box">
-      <div class="header nuoriso">Nuoriso-osasto Kalenteri</div>
-      <iframe src="https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
+      <div class="header">Nuoriso-osasto</div>
+      <iframe src="https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/widget_iframe_events?css=&height=700&width=650"></iframe>
     </div>
-
   </div>
 
-</div>
+  <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
+  <script>
+    const urls = [
+      "https://metsakylanvpk.nimenhuuto.com/calendar/ical",
+      "https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/ical"
+    ];
 
-<script>
-const API_KEY = 'AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs';
-const MIEHISTO_CALENDAR_ID = '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com';
-const NUORISO_CALENDAR_ID = 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.google.com';
+    async function loadICal(url) {
+      const response = await fetch(url);
+      const text = await response.text();
+      const jcalData = ICAL.parse(text);
+      const comp = new ICAL.Component(jcalData);
+      return comp.getAllSubcomponents("vevent").map(ev => new ICAL.Event(ev));
+    }
 
-function cleanTitle(title) {
-  return title
-    .replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '')
-    .replace(/^Metsäkylän VPK Nuoriso-osasto\s*[-–:]?\s*/i, '');
-}
+    function classifyEvent(summary) {
+      const s = summary.toLowerCase();
+      if (s.includes("harkka")) return "harkka";
+      if (s.includes("peli") || s.includes("ottelu")) return "peli";
+      if (s.includes("kokous")) return "kokous";
+      return "muu";
+    }
 
-function getDateColor(title) {
-  const t = title.toLowerCase().trim();
-  if (t.includes("harkka") || t.includes("harjoitus")) return "#007b83";
-  if (t.includes("turnaus") || t.includes("kilpailu") || t.includes("tapahtuma")) return "#4CAF50";
-  if (t.includes("juhla") || t.includes("muu")) return "#FF9800";
-  return "#555"; // oletus
-}
+    function renderEvents(events) {
+      const container = document.getElementById("events-container");
+      const upcoming = events.filter(e => e.startDate.toJSDate() >= new Date())
+                             .sort((a,b) => a.startDate.toJSDate() - b.startDate.toJSDate())
+                             .slice(0, 10);
 
-  function stripLinks(html) {
-  // Poistaa kaikki <a> tagit
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  div.querySelectorAll('a').forEach(a => a.remove());
-  let text = div.textContent || div.innerText || "";
+      upcoming.forEach(ev => {
+        const start = ev.startDate.toJSDate();
+        const end = ev.endDate?.toJSDate();
+        const dateStr = start.toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" });
+        const timeStr = end 
+          ? `${start.getHours()}:${String(start.getMinutes()).padStart(2,"0")} - ${end.getHours()}:${String(end.getMinutes()).padStart(2,"0")}`
+          : `${start.getHours()}:${String(start.getMinutes()).padStart(2,"0")}`;
 
-  // Poistaa myös pelkät URL-osoitteet
-  text = text.replace(/https?:\/\/[^\s]+/g, '');
-  return text;
+        const type = classifyEvent(ev.summary);
 
-}
+        const card = document.createElement("div");
+        card.className = "event-card";
+        card.innerHTML = `
+          <div class="event-date ${type}">${dateStr}</div>
+          <div class="event-title">${ev.summary.replace("Metsäkylän VPK","").replace("Nuoriso-osasto","").trim()}</div>
+          <div class="event-time">${timeStr}</div>
+          <div class="event-desc">${(ev.description || "").replace(/https?:\/\/\S+/g, "")}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
 
-function fetchEvents(calendarId) {
-  const now = new Date().toISOString();
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=20`;
-  return fetch(url).then(res => res.json());
-}
+    (async () => {
+      let allEvents = [];
+      for (let url of urls) {
+        try {
+          const events = await loadICal(url);
+          allEvents = allEvents.concat(events);
+        } catch (e) {
+          console.error("Virhe ladattaessa kalenteria:", e);
+        }
+      }
+      renderEvents(allEvents);
+    })();
 
-function renderEvent(containerId, events) {
-  const container = document.getElementById(containerId);
-  container.innerHTML = '';
-  events.forEach(item => {
-    const start = item.start.dateTime ? new Date(item.start.dateTime).toLocaleString('fi-FI') : item.start.date;
-    const end = item.end.dateTime ? new Date(item.end.dateTime).toLocaleString('fi-FI') : item.end.date;
-    const title = cleanTitle(item.summary);
-    const dateColor = getDateColor(title);
-    let description = item.description ? stripLinks(item.description) : '';
-    const html = `
-      <div class="event-card">
-        <div class="event-date" style="color:${dateColor}">${start}${start!==end ? ' – ' + end : ''}</div>
-        <div class="event-title">${title}</div>
-        ${description ? `<div class="event-description">${description}</div>` : ''}
-      </div>`;
-    container.innerHTML += html;
-  });
-}
-
-fetchEvents(MIEHISTO_CALENDAR_ID).then(data => renderEvent('miehisto-events', data.items));
-fetchEvents(NUORISO_CALENDAR_ID).then(data => renderEvent('nuoriso-events', data.items));
-
-setTimeout(() => location.reload(), 15 * 60 * 1000);
-</script>
+    // Päivitä 15 min välein
+    setTimeout(() => location.reload(), 15 * 60 * 1000);
+  </script>
 
 </body>
 </html>
-
