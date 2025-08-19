@@ -46,7 +46,7 @@ body {
 
 .events-list {
   padding: 10px;
-  max-height: 300px; /* enemmän tapahtumia näkyvissä */
+  max-height: 300px;
   overflow-y: auto;
   background: #e6f2f5;
   border-bottom: 1px solid #ccc;
@@ -73,7 +73,7 @@ iframe {
   flex: 1;
   border: 0;
   width: 100%;
-  min-height: 200px; /* pienennetty alaosa */
+  min-height: 200px;
 }
 
 @media (max-width: 1024px) {
@@ -123,11 +123,15 @@ const CALENDARS = [
   }
 ];
 
+// Tiukka sanitointi: poistaa kaiken HTML:n ja URL-linkit
 function sanitizeText(text) {
-  // Poistaa kaikki linkit ja HTML-tagit
+  if (!text) return '';
+  // Poistaa kaikki HTML-tagit
   let div = document.createElement('div');
   div.innerHTML = text;
-  return div.textContent || div.innerText || '';
+  let clean = div.textContent || div.innerText || '';
+  // Poistaa URLit
+  return clean.replace(/https?:\/\/\S+/g, '');
 }
 
 function fetchEvents(calendarId, elementId) {
