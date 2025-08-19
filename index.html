@@ -28,7 +28,6 @@ body {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
-  flex: 2; /* suurempi painoala */
 }
 
 .calendar-box {
@@ -42,61 +41,82 @@ body {
 }
 
 .header {
-  background: #007b83;
-  color: #fff;
   text-align: center;
   font-size: 1.6em;
   padding: 12px;
   font-weight: 600;
   letter-spacing: 1px;
+  color: #fff;
 }
 
-.header.nuoriso {
-  background: #ff8114;
+.header.miehistö { background: #007b83; }
+.header.nuoriso { background: #ff8114; }
+
+/* Tapahtumakortit */
+.events-list {
+  padding: 10px;
+  background: #e6f2f5;
+  max-height: 500px;
+  overflow-y: auto;
 }
 
-.top-container .calendar-box iframe {
-  flex: 1;
-  min-height: 250px; /* suurempi korkeus yläosaan */
-  width: 100%;
-  border: none;
+.event-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
 }
 
-/* Alaosan kuukausikalenterit */
+.event-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.event-date {
+  font-weight: bold;
+  color: #007b83;
+  margin-bottom: 4px;
+}
+
+.event-title {
+  font-weight: bold;
+  word-wrap: break-word;
+}
+
+.event-description {
+  font-size: 0.9em;
+  color: #555;
+  margin-top: 4px;
+}
+
+/* Alaosan kalenterit */
 .bottom-container {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
-  flex: 1; /* pienempi painoala */
 }
 
 .bottom-container .calendar-box iframe {
-  height: 400px; /* pienempi korkeus alaosaan */
+  height: 250px;
   width: 100%;
   border: none;
 }
 
 /* Responsiivisuus */
 @media (max-width: 1024px) {
-  .top-container, .bottom-container {
-    flex-direction: column;
-  }
-  .top-container .calendar-box iframe {
-    min-height: 400px;
-  }
-  .bottom-container .calendar-box iframe {
-    height: 200px;
-  }
+  .top-container, .bottom-container { flex-direction: column; }
+  .events-list { max-height: 400px; }
+  .bottom-container .calendar-box iframe { height: 200px; }
 }
 
 @media (max-width: 600px) {
   .header { font-size: 1.4em; padding: 10px; }
-  .top-container .calendar-box iframe {
-    min-height: 300px;
-  }
-  .bottom-container .calendar-box iframe {
-    height: 150px;
-  }
+  .events-list { max-height: 300px; }
+  .bottom-container .calendar-box iframe { height: 150px; }
 }
 </style>
 </head>
@@ -108,13 +128,13 @@ body {
   <div class="top-container">
 
     <div class="calendar-box">
-      <div class="header">Miehistö</div>
-      <iframe src="https://metsakylanvpk.nimenhuuto.com/calendar/widget_iframe_events?css=&height=700&width=650"></iframe>
+      <div class="header miehistö">Miehistö</div>
+      <div class="events-list" id="miehisto-events"></div>
     </div>
 
     <div class="calendar-box">
       <div class="header nuoriso">Nuoriso-osasto</div>
-      <iframe src="https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/widget_iframe_events?css=&height=700&width=650"></iframe>
+      <div class="events-list" id="nuoriso-events"></div>
     </div>
 
   </div>
@@ -123,7 +143,7 @@ body {
   <div class="bottom-container">
 
     <div class="calendar-box">
-      <div class="header">Miehistö Kalenteri</div>
+      <div class="header miehistö">Miehistö Kalenteri</div>
       <iframe src="https://metsakylanvpk.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
     </div>
 
@@ -137,14 +157,37 @@ body {
 </div>
 
 <script>
-  // Automaattinen päivitys 15 minuutin välein
-  setTimeout(() => location.reload(), 15 * 60 * 1000);
+// Esimerkkidata yläosan tapahtumille (JSON tai Google Calendar APIsta)
+const miehistoEvents = [
+  { title: "Harkka", start: "19.8.2025", end: "19.8.2025", description: "Jatkuva harjoitus" },
+  { title: "Turnaus", start: "21.8.2025", end: "23.8.2025", description: "Kesäinen kilpailu" }
+];
+
+const nuorisoEvents = [
+  { title: "Nuorten harjoitus", start: "20.8.2025", end: "20.8.2025", description: "Paikalla 18-21" }
+];
+
+function renderEvent(containerId, events) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  events.forEach(item => {
+    const html = `
+      <div class="event-card">
+        <div class="event-date">${item.start}${item.end && item.end !== item.start ? ' – ' + item.end : ''}</div>
+        <div class="event-title">${item.title}</div>
+        ${item.description ? `<div class="event-description">${item.description}</div>` : ''}
+      </div>`;
+    container.innerHTML += html;
+  });
+}
+
+// Renderöidään tapahtumat
+renderEvent('miehisto-events', miehistoEvents);
+renderEvent('nuoriso-events', nuorisoEvents);
+
+// Automaattinen päivitys 15 minuutin välein
+setTimeout(() => location.reload(), 15 * 60 * 1000);
 </script>
 
 </body>
 </html>
-
-
-
-
-
