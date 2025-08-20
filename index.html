@@ -76,12 +76,12 @@ body {
 
 .event-date {
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   font-size: 1em;
-  color: #fff;              /* Teksti valkoiseksi */
-  padding: 4px 6px;         /* Pieni sisämarginaali */
-  border-radius: 6px;       /* Pyöristetyt kulmat */
-  display: inline-block;    /* Näyttää "tägiltä" */
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-block;
 }
 
 .event-title {
@@ -156,34 +156,50 @@ body {
 </div>
 
 <script>
+/* --- ASETUKSET --- */
 const API_KEY = 'AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs';
 const MIEHISTO_CALENDAR_ID = '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com';
 const NUORISO_CALENDAR_ID = 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.google.com';
 
+/* --- APUFUNKTIOT --- */
+
+// Poistaa kaiken ennen viimeistä erottajaa (– tai :)
 function cleanTitle(title) {
-  // Poistaa kaiken ennen viimeistä erottajaa (– tai :)
+  if (!title) return '';
   const match = title.match(/(?:–|:)\s*(.+)$/);
   if (match && match[1]) return match[1].trim();
-  return title.trim(); // jos ei erottajaa, palautetaan koko nimi
+  // Varotoimi: poista myös mahdolliset ryhmänimet alusta
+  return title
+    .replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '')
+    .replace(/^Metsäkylän VPK Nuoriso-osasto\s*[-–:]?\s*/i, '')
+    .trim();
 }
 
-function getDateColor(title) {
-  const t = title.toLowerCase().trim();
-  if (t.includes("harkka") || t.includes("harjoitus")) return "#007b83";
-  if (t.includes("turnaus") || t.includes("kilpailu") || t.includes("tapahtuma")) return "#4CAF50";
-  if (t.includes("juhla") || t.includes("muu")) return "#FF9800";
-  return "#555";
+// Nimenhuudon tapahtumatyypit → värit (”sinnepäin” sävyt)
+function getDateColor(originalSummary) {
+  const t = (originalSummary || '').toLowerCase();
+  if (t.includes('harkka') || t.includes('harjoitus')) return '#c6dce2';       // Harkka
+  if (t.includes('auto')) return '#fddac4';                                   // Auto
+  if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#d7e3a1'; // Kalustoesittely
+  if (t.includes('muu')) return '#f8f3c0';                                    // Muu tapahtuma
+  if (t.includes('ei käytössä')) return '#c0e3e3';                            // Ei käytössä
+  return '#7a7a7a'; // oletus (harmaa)
 }
 
+// Poista linkit lisätiedoista
 function stripLinks(html) {
+  if (!html) return '';
   const div = document.createElement('div');
   div.innerHTML = html;
+  // Poista <a> -tagit
   div.querySelectorAll('a').forEach(a => a.remove());
-  let text = div.textContent || div.innerText || "";
-  text = text.replace(/https?:\/\/[^\s]+/g, '');
+  // Poista myös pelkät URLit
+  let text = div.textContent || div.innerText || '';
+  text = text.replace(/https?:\/\/\S+/g, '').trim();
   return text;
 }
 
+// Päivämäärien muotoilu (sama päivä → kellonajat; useampi päivä → molemmat päivät ja ajat)
 function formatEventDate(startStr, endStr) {
   const start = startStr.includes('T') ? new Date(startStr) : new Date(startStr);
   const end = endStr.includes('T') ? new Date(endStr) : new Date(endStr);
@@ -193,42 +209,82 @@ function formatEventDate(startStr, endStr) {
 
   if (isAllDay) {
     if (sameDay) return start.toLocaleDateString('fi-FI');
-    else return `${start.toLocaleDateString('fi-FI')} – ${end.toLocaleDateString('fi-FI')}`;
+    // all-day monipäiväinen
+    return `${start.toLocaleDateString('fi-FI')} – ${end.toLocaleDateString('fi-FI')}`;
   } else if (sameDay) {
+    // sama päivä → näytä kloajat
     return `${start.toLocaleDateString('fi-FI')} klo ${start.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${end.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
   } else {
+    // eri päivät
     return `${start.toLocaleDateString('fi-FI')} klo ${start.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${end.toLocaleDateString('fi-FI')} klo ${end.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
   }
 }
 
+/* --- DATAN HAKU --- */
 function fetchEvents(calendarId) {
   const now = new Date().toISOString();
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=20`;
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events` +
+              `?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=30`;
   return fetch(url).then(res => res.json());
 }
 
+/* --- RENDERÖINTI --- */
 function renderEvent(containerId, events) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
+
+  if (!events || !Array.isArray(events)) {
+    container.innerHTML = '<div class="event-card"><div class="event-title">Ei tapahtumia</div></div>';
+    return;
+  }
+
   events.forEach(item => {
-    const start = item.start.dateTime || item.start.date;
-    const end = item.end.dateTime || item.end.date;
-    const title = cleanTitle(item.summary);
-    const dateColor = getDateColor(title);
+    const start = (item.start && (item.start.dateTime || item.start.date)) || '';
+    const end   = (item.end   && (item.end.dateTime   || item.end.date))   || '';
+    const originalSummary = item.summary || '';
+    const title = cleanTitle(originalSummary);
+    const dateBg = getDateColor(originalSummary);
     const description = item.description ? stripLinks(item.description) : '';
-    const html = `
-      <div class="event-card">
-        <div class="event-date" style="background:${dateColor}">${formatEventDate(start, end)}</div>
-        <div class="event-title">${title}</div>
-        ${description ? `<div class="event-description">${description}</div>` : ''}
-      </div>`;
-    container.innerHTML += html;
+
+    const card = document.createElement('div');
+    card.className = 'event-card';
+
+    const dateEl = document.createElement('div');
+    dateEl.className = 'event-date';
+    dateEl.style.background = dateBg;
+    dateEl.textContent = formatEventDate(start, end);
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'event-title';
+    titleEl.textContent = title;
+
+    card.appendChild(dateEl);
+    card.appendChild(titleEl);
+
+    if (description) {
+      const descEl = document.createElement('div');
+      descEl.className = 'event-description';
+      descEl.textContent = description;
+      card.appendChild(descEl);
+    }
+
+    container.appendChild(card);
   });
 }
 
-fetchEvents(MIEHISTO_CALENDAR_ID).then(data => renderEvent('miehisto-events', data.items));
-fetchEvents(NUORISO_CALENDAR_ID).then(data => renderEvent('nuoriso-events', data.items));
+/* --- KÄYTTÖ --- */
+Promise.all([
+  fetchEvents(MIEHISTO_CALENDAR_ID),
+  fetchEvents(NUORISO_CALENDAR_ID)
+]).then(([miehistoData, nuorisoData]) => {
+  renderEvent('miehisto-events', miehistoData.items);
+  renderEvent('nuoriso-events', nuorisoData.items);
+}).catch(() => {
+  document.getElementById('miehisto-events').innerHTML = '<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div></div>';
+  document.getElementById('nuoriso-events').innerHTML = '<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div></div>';
+});
 
+// Autopäivitys 15 min välein
 setTimeout(() => location.reload(), 15 * 60 * 1000);
 </script>
 
