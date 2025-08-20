@@ -1,163 +1,139 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-  <meta charset="UTF-8">
-  <title>Nimenhuuto Kalenteri</title>
+  <meta charset="UTF-8" />
+  <title>Tapahtumat</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      margin: 0;
+      background: #f7f7f7;
       padding: 20px;
     }
-    .calendar {
+    h1 {
+      text-align: center;
+    }
+    .container {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 16px;
+      gap: 15px;
     }
     .card {
-      padding: 12px;
+      background: white;
+      padding: 15px;
       border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-    .title {
+    .date {
       font-weight: bold;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
     }
-    .time {
-      color: #333;
-      font-size: 14px;
+    .summary {
+      font-size: 1.1em;
+      margin-bottom: 8px;
     }
-    .location {
-      font-size: 13px;
+    .description {
+      font-size: 0.9em;
       color: #555;
-      margin-top: 4px;
+    }
+
+    /* Värikoodaus tapahtumatyypin mukaan */
+    .harkka .date {
+      color: #2c6d7d; /* sinertävä */
+    }
+    .auto .date {
+      color: #d2691e; /* oranssi */
+    }
+    .kalusto .date {
+      color: #4b6f28; /* vihreä */
+    }
+    .muu .date {
+      color: #8b8000; /* keltaruskea */
+    }
+    .ei .date {
+      color: #468080; /* harmaa/turkoosi */
     }
   </style>
 </head>
 <body>
   <h1>Tapahtumat</h1>
-  <div id="calendar" class="calendar"></div>
+  <div class="container" id="events"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
   <script>
     const urls = [
-      "https://metsakylanvpk.nimenhuuto.com/public/calendar/ics?groupId=1",
-      "https://metsakylanvpk.nimenhuuto.com/public/calendar/ics?groupId=2"
+      "https://metsakylanvpk.nimenhuuto.com/calendar/ical",
+      "https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/ical"
     ];
 
-    // Tyyppien värit kuvan mukaisesti
-    const typeColors = {
-      "Harkka": "#c6dce2",
-      "Auto": "#fddac4",
-      "Kalustoesittely": "#d7e3a1",
-      "Muu tapahtuma": "#f8f3c0",
-      "Ei käytössä": "#c0e3e3"
-    };
+    async function loadCalendar(url) {
+      const response = await fetch(url);
+      const text = await response.text();
+      const jcalData = ICAL.parse(text);
+      const comp = new ICAL.Component(jcalData);
+      return comp.getAllSubcomponents("vevent").map(vevent => new ICAL.Event(vevent));
+    }
 
-    async function loadCalendar() {
+    function formatDate(start, end) {
+      const options = { day: "numeric", month: "numeric", year: "numeric" };
+      const timeOptions = { hour: "2-digit", minute: "2-digit" };
+
+      const sameDay = start.toJSDate().toDateString() === end.toJSDate().toDateString();
+
+      if (sameDay) {
+        return `${start.toJSDate().toLocaleDateString("fi-FI", options)} klo ${start.toJSDate().toLocaleTimeString("fi-FI", timeOptions)} - ${end.toJSDate().toLocaleTimeString("fi-FI", timeOptions)}`;
+      } else {
+        return `${start.toJSDate().toLocaleDateString("fi-FI", options)} ${start.toJSDate().toLocaleTimeString("fi-FI", timeOptions)} – ${end.toJSDate().toLocaleDateString("fi-FI", options)} ${end.toJSDate().toLocaleTimeString("fi-FI", timeOptions)}`;
+      }
+    }
+
+    function getEventClass(summary) {
+      summary = summary.toLowerCase();
+      if (summary.includes("harkka")) return "harkka";
+      if (summary.includes("auto")) return "auto";
+      if (summary.includes("kalusto")) return "kalusto";
+      if (summary.includes("muu")) return "muu";
+      if (summary.includes("ei käytössä")) return "ei";
+      return "";
+    }
+
+    async function displayEvents() {
       let events = [];
-      for (const url of urls) {
-        const response = await fetch(url);
-        const text = await response.text();
-        events = events.concat(parseICS(text));
+      for (let url of urls) {
+        const evs = await loadCalendar(url);
+        events = events.concat(evs);
       }
 
-      // järjestä aikajärjestykseen
-      events.sort((a, b) => a.start - b.start);
+      events.sort((a, b) => a.startDate.toJSDate() - b.startDate.toJSDate());
 
-      const container = document.getElementById("calendar");
-      container.innerHTML = "";
-      for (const ev of events) {
-        // valitaan väri summaryn mukaan
-        let bg = "#fff";
-        for (const key in typeColors) {
-          if (ev.summary && ev.summary.toLowerCase().includes(key.toLowerCase())) {
-            bg = typeColors[key];
-            break;
-          }
-        }
-
+      const container = document.getElementById("events");
+      events.forEach(event => {
         const card = document.createElement("div");
-        card.className = "card";
-        card.style.background = bg;
+        card.className = "card " + getEventClass(event.summary);
 
-        const title = document.createElement("div");
-        title.className = "title";
-        title.textContent = ev.summary || "Tapahtuma";
+        const date = document.createElement("div");
+        date.className = "date";
+        date.textContent = formatDate(event.startDate, event.endDate);
 
-        const time = document.createElement("div");
-        time.className = "time";
-        let timeText = formatDate(ev.start);
-        if (ev.end && ev.start.toDateString() === ev.end.toDateString()) {
-          timeText += " – " + formatTime(ev.end);
-        } else if (ev.end) {
-          timeText += " – " + formatDate(ev.end);
-        }
-        time.textContent = timeText;
+        const summary = document.createElement("div");
+        summary.className = "summary";
+        summary.textContent = event.summary
+          .replace("Metsäkylän VPK:", "")
+          .replace("Nuoriso-osasto:", "")
+          .trim();
 
-        card.appendChild(title);
-        card.appendChild(time);
+        const description = document.createElement("div");
+        description.className = "description";
+        description.textContent = event.description.replace(/https?:\/\/\S+/g, "").trim();
 
-        if (ev.location) {
-          const loc = document.createElement("div");
-          loc.className = "location";
-          loc.textContent = ev.location;
-          card.appendChild(loc);
-        }
+        card.appendChild(date);
+        card.appendChild(summary);
+        if (description.textContent) card.appendChild(description);
 
         container.appendChild(card);
-      }
+      });
     }
 
-    function parseICS(text) {
-      const lines = text.split(/\r?\n/);
-      const events = [];
-      let current = null;
-      for (let line of lines) {
-        if (line.startsWith("BEGIN:VEVENT")) {
-          current = {};
-        } else if (line.startsWith("END:VEVENT")) {
-          if (current) events.push(current);
-          current = null;
-        } else if (current) {
-          if (line.startsWith("SUMMARY:")) {
-            current.summary = line.substring(8).trim();
-          } else if (line.startsWith("DTSTART")) {
-            current.start = parseICalDate(line.split(":")[1]);
-          } else if (line.startsWith("DTEND")) {
-            current.end = parseICalDate(line.split(":")[1]);
-          } else if (line.startsWith("LOCATION:")) {
-            current.location = line.substring(9).trim();
-          }
-        }
-      }
-      return events;
-    }
-
-    function parseICalDate(value) {
-      if (!value) return null;
-      const year = parseInt(value.slice(0,4));
-      const month = parseInt(value.slice(4,6)) - 1;
-      const day = parseInt(value.slice(6,8));
-      const hour = value.length >= 11 ? parseInt(value.slice(9,11)) : 0;
-      const minute = value.length >= 13 ? parseInt(value.slice(11,13)) : 0;
-      return new Date(year, month, day, hour, minute);
-    }
-
-    function formatDate(date) {
-      if (!date) return "";
-      return date.getDate() + "." + (date.getMonth()+1) + ". klo " + formatTime(date);
-    }
-
-    function formatTime(date) {
-      if (!date) return "";
-      return date.getHours().toString().padStart(2,"0") + ":" +
-             date.getMinutes().toString().padStart(2,"0");
-    }
-
-    loadCalendar();
-    setInterval(loadCalendar, 5 * 60 * 1000); // päivitys 5 min välein
+    displayEvents();
   </script>
 </body>
 </html>
