@@ -182,12 +182,11 @@ function getDateColor(originalSummary) {
   // Lisää tähän omat sanasi ja värisi
   if (t.includes('auto')) return '#fc832f';              // Auto
   if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f'; // Autojen numerot
-  if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#66cc33';      // Kalustoesittely
+  if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638';      // Kalustoesittely
   if (t.includes('muu')) return '#f8f3c0';                                           // Muu tapahtuma
   if (t.includes('harkka') || t.includes('harjoitus')) return '#007b83';             // Harjoitus
   if (t.includes('turnaus') || t.includes('kilpailu') || t.includes('tapahtuma')) return '#FF9800'; // Tapahtumat
   if (t.includes('juhla')) return '#F44336';                                          // Juhla
-  if (t.includes('myrskyvauriot')) return '#555';                                     // Myrskyvauriot
   
   return '#2178a1'; // oletus (harmaa)
 }
@@ -296,6 +295,7 @@ setTimeout(() => location.reload(), 59 * 60 * 1000);
 
 </body>
 </html>
+
 
 
 
