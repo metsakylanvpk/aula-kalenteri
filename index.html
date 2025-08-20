@@ -179,7 +179,7 @@ function cleanTitle(title) {
 function getDateColor(originalSummary) {
   const t = (originalSummary || '').toLowerCase();
   if (t.includes('harkka') || t.includes('harjoitus')) return '#c6dce2';       // Harkka
-  if (t.includes('auto'))  || t.includes('471, 473, 477')) return '#ff752d';       // Auto
+  if (t.includes('auto'))  || t.includes('477')) return '#ff752d';       // Auto
   if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#d7e3a1'; // Kalustoesittely
   if (t.includes('muu')) return '#f8f3c0';                                    // Muu tapahtuma
   if (t.includes('ei käytössä')) return '#c0e3e3';                            // Ei käytössä
@@ -290,4 +290,5 @@ setTimeout(() => location.reload(), 15 * 60 * 1000);
 
 </body>
 </html>
+
 
