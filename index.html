@@ -186,6 +186,7 @@ function getDateColor(originalSummary) {
   if (t.includes('päätös')) return '#fcd854';                                        // Muu tapahtuma
   if (t.includes('kokous')) return '#fcd854';                                        // Kokous
   if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638'; // Tapahtumat
+  if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638'; // Jokkis
   if (t.includes('juhla')) return '#7ab638';                                          // Juhla
   
   return '#2178a1'; // oletus (sininen)
@@ -295,6 +296,7 @@ setTimeout(() => location.reload(), 59 * 60 * 1000);
 
 </body>
 </html>
+
 
 
 
