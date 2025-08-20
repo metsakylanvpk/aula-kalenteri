@@ -1,366 +1,164 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<meta charset="UTF-8">
-<title>Aulan kalenterit</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body {
-  margin: 0;
-  background: linear-gradient(135deg, #f9f9f9, #e9eef3);
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  padding: 20px;
-}
-
-.container {
-  display: flex;
-  flex-direction: column;
-  width: 95%;
-  max-width: 1366px;
-  gap: 20px;
-}
-
-.top-container {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.calendar-box {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-}
-
-.header {
-  text-align: center;
-  font-size: 1.6em;
-  padding: 12px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: #fff;
-}
-
-.header.miehistö { background: #007b83; }
-.header.nuoriso { background: #ff8114; }
-
-.events-list {
-  padding: 10px;
-  background: #e6f2f5;
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.event-card {
-  display: flex;
-  flex-direction: column;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  padding: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  transition: transform 0.2s;
-  background: #fefefe;
-}
-
-.event-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-.event-date {
-  font-weight: bold;
-  margin-bottom: 6px;
-  font-size: 1em;
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 6px;
-  display: inline-block;
-}
-
-.event-title {
-  font-weight: bold;
-  word-wrap: break-word;
-}
-
-.event-description {
-  font-size: 0.9em;
-  color: #555;
-  margin-top: 4px;
-  word-wrap: break-word;
-}
-
-.event-participants {
-  margin-top: 8px;
-  font-size: 0.85em;
-  display: flex;
-  justify-content: space-between;
-  color: #666;
-  border-top: 1px dashed #ddd;
-  padding-top: 6px;
-}
-
-.bottom-container {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.bottom-container .calendar-box iframe {
-  height: 350px;
-  width: 100%;
-  border: none;
-}
-
-@media (max-width: 1024px) {
-  .top-container, .bottom-container { flex-direction: column; }
-  .events-list { max-height: 400px; }
-  .bottom-container .calendar-box iframe { height: 200px; }
-}
-
-@media (max-width: 600px) {
-  .header { font-size: 1.4em; padding: 10px; }
-  .events-list { max-height: 300px; }
-  .bottom-container .calendar-box iframe { height: 150px; }
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tapahtumat</title>
+  <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f9;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      text-align: center;
+      padding: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .date {
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+      padding: 0.3rem;
+      border-radius: 8px;
+      color: white;
+      text-align: center;
+    }
+    .summary {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .time {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 0.5rem;
+    }
+    .participants {
+      font-size: 0.9rem;
+      color: #333;
+    }
+  </style>
 </head>
 <body>
+  <h1>Tapahtumat</h1>
+  <div class="grid" id="events"></div>
 
-<div class="container">
+  <script>
+    const ICAL_URLS = [
+      { url: "https://metsakylanvpk.nimenhuuto.com/calendar/ical", name: "Metsäkylän VPK" },
+      { url: "https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/ical", name: "Nuoriso-osasto" }
+    ];
 
-  <div class="top-container">
-
-    <div class="calendar-box">
-      <div class="header miehistö">Miehistö</div>
-      <div class="events-list" id="miehisto-events"></div>
-    </div>
-
-    <div class="calendar-box">
-      <div class="header nuoriso">Nuoriso-osasto</div>
-      <div class="events-list" id="nuoriso-events"></div>
-    </div>
-
-  </div>
-
-  <div class="bottom-container">
-
-    <div class="calendar-box">
-      <div class="header miehistö">Miehistö Kalenteri</div>
-      <iframe src="https://metsakylanvpk.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
-    </div>
-
-    <div class="calendar-box">
-      <div class="header nuoriso">Nuoriso-osasto Kalenteri</div>
-      <iframe src="https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
-    </div>
-
-  </div>
-
-</div>
-
-<script>
-/* --- ASETUKSET --- */
-const API_KEY = 'AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs';
-const MIEHISTO_CALENDAR_ID = '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com';
-const NUORISO_CALENDAR_ID = 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.google.com';
-
-// Nimenhuuto-API:n URL-osoitteet osallistujatietojen hakemiseen
-const NIMENHUUTO_EVENT_URL = 'https://metsakylanvpk.nimenhuuto.com/events/';
-const NIMENHUUTO_NUORISO_EVENT_URL = 'https://metsakylanvpknuoriso-osasto.nimenhuuto.com/events/';
-
-/* --- APUFUNKTIOT --- */
-
-// Poistaa kaiken ennen viimeistä erottajaa (– tai :)
-function cleanTitle(title) {
-  if (!title) return '';
-  const match = title.match(/(?:–|:)\s*(.+)$/);
-  if (match && match[1]) return match[1].trim();
-  // Varotoimi: poista myös mahdolliset ryhmänimet alusta
-  return title
-    .replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '')
-    .replace(/^Metsäkylän VPK Nuoriso-osasto\s*[-–:]?\s*/i, '')
-    .trim();
-}
-
-// Nimenhuudon tapahtumatyypit → värit (”sinnepäin” sävyt)
-function getDateColor(originalSummary) {
-  const t = (originalSummary || '').toLowerCase();
-  
-  // Lisää tähän omat sanasi ja värisi
-  if (t.includes('auto')) return '#fc832f';              // Auto
-  if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f'; // Autojen numerot
-  if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638';      // Kalustoesittely
-  if (t.includes('päätös')) return '#fcd854';                                        // Muu tapahtuma
-  if (t.includes('kokous')) return '#fcd854';                                        // Kokous
-  if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638'; // Tapahtumat
-  if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638'; // Jokkis
-  if (t.includes('juhla')) return '#7ab638';                                          // Juhla
-  
-  return '#2178a1'; // oletus (sininen)
-}
-
-// Poista linkit lisätiedoista
-function stripLinks(html) {
-  if (!html) return '';
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  // Poista <a> -tagit
-  div.querySelectorAll('a').forEach(a => a.remove());
-  // Poista myös pelkät URLit
-  let text = div.textContent || div.innerText || '';
-  text = text.replace(/https?:\/\/\S+/g, '').trim();
-  return text;
-}
-
-// Päivämäärien muotoilu (sama päivä → kellonajat; useampi päivä → molemmat päivät ja ajat)
-function formatEventDate(startStr, endStr) {
-  const start = startStr.includes('T') ? new Date(startStr) : new Date(startStr);
-  const end = endStr.includes('T') ? new Date(endStr) : new Date(endStr);
-
-  const sameDay = start.toDateString() === end.toDateString();
-  const isAllDay = !startStr.includes('T') && !endStr.includes('T');
-
-  if (isAllDay) {
-    if (sameDay) return start.toLocaleDateString('fi-FI');
-    // all-day monipäiväinen
-    return `${start.toLocaleDateString('fi-FI')} – ${end.toLocaleDateString('fi-FI')}`;
-  } else if (sameDay) {
-    // sama päivä → näytä kloajat
-    return `${start.toLocaleDateString('fi-FI')} klo ${start.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${end.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
-  } else {
-    // eri päivät
-    return `${start.toLocaleDateString('fi-FI')} klo ${start.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${end.toLocaleDateString('fi-FI')} klo ${end.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
-  }
-}
-
-// Etsii Nimenhuudon tapahtuma-ID:n Google Calendarin kuvauksesta
-function findNimenhuutoEventId(description) {
-  if (!description) return null;
-  
-  // Etsitään Nimenhuudon URL-osoite kuvauksesta
-  const urlRegex = /https?:\/\/metsakylanvpk(?:nuoriso-osasto)?\.nimenhuuto\.com\/events\/(\d+)/i;
-  const match = description.match(urlRegex);
-  
-  if (match && match[1]) {
-    return match[1];
-  }
-  
-  return null;
-}
-
-// Hakee osallistujatiedot Nimenhuudon API:sta
-async function fetchParticipants(eventId, isNuoriso = false) {
-  if (!eventId) return { in: 0, out: 0 };
-  
-  try {
-    const baseUrl = isNuoriso ? NIMENHUUTO_NUORISO_EVENT_URL : NIMENHUUTO_EVENT_URL;
-    const response = await fetch(`${baseUrl}${eventId}/participants`);
-    
-    if (!response.ok) {
-      throw new Error('Osallistujatietoja ei voitu ladata');
-    }
-    
-    const data = await response.json();
-    return {
-      in: data.in || 0,
-      out: data.out || 0
+    const COLORS = {
+      Harjoitukset: "#1e90ff",
+      "Sammutus kilpailut": "#ff6347",
+      "Varainhankinta": "#ffa500",
+      "Kalusto": "#32cd32",
+      "Koulutus": "#8a2be2",
+      "Nuoriso-osasto": "#ff1493",
+      "Muu": "#708090"
     };
-  } catch (error) {
-    console.error('Virhe osallistujatietojen haussa:', error);
-    return { in: 0, out: 0 };
-  }
-}
 
-/* --- DATAN HAKU --- */
-function fetchEvents(calendarId) {
-  const now = new Date().toISOString();
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events` +
-              `?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=30`;
-  return fetch(url).then(res => res.json());
-}
-
-/* --- RENDERÖINTI --- */
-async function renderEvent(containerId, events, isNuoriso = false) {
-  const container = document.getElementById(containerId);
-  container.innerHTML = '';
-
-  if (!events || !Array.isArray(events)) {
-    container.innerHTML = '<div class="event-card"><div class="event-title">Ei tapahtumia</div></div>';
-    return;
-  }
-
-  for (const item of events) {
-    const start = (item.start && (item.start.dateTime || item.start.date)) || '';
-    const end   = (item.end   && (item.end.dateTime   || item.end.date))   || '';
-    const originalSummary = item.summary || '';
-    const title = cleanTitle(originalSummary);
-    const dateBg = getDateColor(originalSummary);
-    const description = item.description ? stripLinks(item.description) : '';
-    
-    // Etsitään Nimenhuudon tapahtuma-ID ja haetaan osallistujatiedot
-    const eventId = findNimenhuutoEventId(item.description);
-    const participants = eventId ? await fetchParticipants(eventId, isNuoriso) : { in: 0, out: 0 };
-
-    const card = document.createElement('div');
-    card.className = 'event-card';
-
-    const dateEl = document.createElement('div');
-    dateEl.className = 'event-date';
-    dateEl.style.background = dateBg;
-    dateEl.textContent = formatEventDate(start, end);
-
-    const titleEl = document.createElement('div');
-    titleEl.className = 'event-title';
-    titleEl.textContent = title;
-
-    card.appendChild(dateEl);
-    card.appendChild(titleEl);
-
-    if (description) {
-      const descEl = document.createElement('div');
-      descEl.className = 'event-description';
-      descEl.textContent = description;
-      card.appendChild(descEl);
+    function getColor(summary) {
+      for (let key in COLORS) {
+        if (summary.toLowerCase().includes(key.toLowerCase())) {
+          return COLORS[key];
+        }
+      }
+      return "#444"; // oletusväri
     }
 
-    // Lisätään osallistujatiedot
-    if (eventId) {
-      const participantsEl = document.createElement('div');
-      participantsEl.className = 'event-participants';
-      participantsEl.innerHTML = `
-        <span>Osallistuu: <strong>${participants.in}</strong></span>
-        <span>Ei osallistu: <strong>${participants.out}</strong></span>
-      `;
-      card.appendChild(participantsEl);
+    async function fetchParticipants(url) {
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        return { in: data.in || 0, out: data.out || 0 };
+      } catch (e) {
+        return { in: 0, out: 0 }; // fallback jos ei saada JSONia
+      }
     }
 
-    container.appendChild(card);
-  }
-}
+    async function loadCalendar() {
+      let allEvents = [];
 
-/* --- KÄYTTÖ --- */
-Promise.all([
-  fetchEvents(MIEHISTO_CALENDAR_ID),
-  fetchEvents(NUORISO_CALENDAR_ID)
-]).then(async ([miehistoData, nuorisoData]) => {
-  await renderEvent('miehisto-events', miehistoData.items, false);
-  await renderEvent('nuoriso-events', nuorisoData.items, true);
-}).catch((error) => {
-  console.error('Virhe tapahtumien haussa:', error);
-  document.getElementById('miehisto-events').innerHTML = '<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div></div>';
-  document.getElementById('nuoriso-events').innerHTML = '<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div></div>';
-});
+      for (const { url, name } of ICAL_URLS) {
+        const response = await fetch(url);
+        const icalData = await response.text();
+        const jcalData = ICAL.parse(icalData);
+        const comp = new ICAL.Component(jcalData);
+        const vevents = comp.getAllSubcomponents("vevent");
 
-// Autopäivitys 59 min välein
-setTimeout(() => location.reload(), 59 * 60 * 1000);
-</script>
+        vevents.forEach(vevent => {
+          const event = new ICAL.Event(vevent);
+          if (event.startDate.toJSDate() >= new Date()) {
+            allEvents.push({
+              calendar: name,
+              summary: event.summary,
+              start: event.startDate.toJSDate(),
+              end: event.endDate ? event.endDate.toJSDate() : null
+            });
+          }
+        });
+      }
+
+      allEvents.sort((a, b) => a.start - b.start);
+
+      const container = document.getElementById("events");
+      container.innerHTML = "";
+
+      for (const ev of allEvents) {
+        const dateColor = getColor(ev.summary);
+
+        // jos sama päivä → näytetään kloajat
+        let timeText = "";
+        if (ev.end && ev.start.toDateString() === ev.end.toDateString()) {
+          timeText = `${ev.start.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} – ${ev.end.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+        } else if (ev.end) {
+          timeText = `${ev.start.toLocaleString()} – ${ev.end.toLocaleString()}`;
+        } else {
+          timeText = ev.start.toLocaleString();
+        }
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="date" style="background:${dateColor}">
+            ${ev.start.toLocaleDateString("fi-FI", {weekday:"short", day:"numeric", month:"numeric"})}
+          </div>
+          <div class="summary">${ev.summary}</div>
+          <div class="time">${timeText}</div>
+          <div class="participants">IN: 0 | OUT: 0</div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    loadCalendar();
+    setInterval(loadCalendar, 5 * 60 * 1000); // päivitys 5 min välein
+  </script>
+
+  <!--
+  <div class="bottom-container">
+    <iframe src="https://calendar.google.com/calendar/embed?src=..." style="border:0" width="800" height="600" frameborder="0" scrolling="no"></iframe>
+  </div>
+  -->
 
 </body>
 </html>
