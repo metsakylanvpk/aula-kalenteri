@@ -12,21 +12,21 @@ body {
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  padding: 20px;
+  padding: 10px;
 }
 
 .container {
   display: flex;
   flex-direction: column;
-  width: 95%;
-  max-width: 1920px;
+  width: 100%;
+  max-width: 1920px; /* Näyttö täyteen leveydeltään */
   gap: 20px;
 }
 
 .top-container {
   display: flex;
   gap: 20px;
-  flex-wrap: wrap;
+  flex: 1;
 }
 
 .calendar-box {
@@ -41,9 +41,9 @@ body {
 
 .header {
   text-align: center;
-  font-size: 1.6em;
-  padding: 12px;
-  font-weight: 600;
+  font-size: 2em; /* suurempi otsikko TV:lle */
+  padding: 16px;
+  font-weight: 700;
   letter-spacing: 1px;
   color: #fff;
 }
@@ -52,21 +52,22 @@ body {
 .header.nuoriso { background: #ff8114; }
 
 .events-list {
-  padding: 10px;
+  padding: 20px;
   background: #e6f2f5;
-  max-height: 1080px;
+  max-height: calc(100vh - 140px); /* täyttää ruudun korkeuden */
   overflow-y: auto;
 }
 
 .event-card {
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  padding: 10px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   transition: transform 0.2s;
   background: #fefefe;
+  font-size: 1.2em; /* isompi teksti */
 }
 
 .event-card:hover {
@@ -76,49 +77,36 @@ body {
 
 .event-date {
   font-weight: bold;
-  margin-bottom: 6px;
-  font-size: 1em;
+  margin-bottom: 8px;
+  font-size: 1.1em;
   color: #fff;
-  padding: 4px 8px;
+  padding: 6px 10px;
   border-radius: 6px;
   display: inline-block;
 }
 
 .event-title {
   font-weight: bold;
+  font-size: 1.2em;
   word-wrap: break-word;
 }
 
 .event-description {
-  font-size: 0.9em;
-  color: #555;
-  margin-top: 4px;
+  font-size: 1em;
+  color: #444;
+  margin-top: 6px;
   word-wrap: break-word;
 }
 
-.bottom-container {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.bottom-container .calendar-box iframe {
-  height: 250px;
-  height: 350px;
-  width: 100%;
-  border: none;
-}
-
 @media (max-width: 1024px) {
-  .top-container, .bottom-container { flex-direction: column; }
+  .top-container { flex-direction: column; }
   .events-list { max-height: 400px; }
-  .bottom-container .calendar-box iframe { height: 200px; }
 }
 
 @media (max-width: 600px) {
   .header { font-size: 1.4em; padding: 10px; }
+  .event-card { font-size: 1em; }
   .events-list { max-height: 300px; }
-  .bottom-container .calendar-box iframe { height: 150px; }
 }
 </style>
 </head>
@@ -140,22 +128,6 @@ body {
 
   </div>
 
-  <!--
-  <div class="bottom-container">
-
-    <div class="calendar-box">
-      <div class="header miehistö">Miehistö Kalenteri</div>
-      <iframe src="https://metsakylanvpk.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
-    </div>
-
-    <div class="calendar-box">
-      <div class="header nuoriso">Nuoriso-osasto Kalenteri</div>
-      <iframe src="https://metsakylanvpknuoriso-osasto.nimenhuuto.com/calendar/widget_iframe_monthly_calendar?css=&height=300&width=650"></iframe>
-    </div>
-
-  </div>
--->
-
 </div>
 
 <script>
@@ -165,50 +137,39 @@ const MIEHISTO_CALENDAR_ID = '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.g
 const NUORISO_CALENDAR_ID = 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.google.com';
 
 /* --- APUFUNKTIOT --- */
-
-// Poistaa kaiken ennen viimeistä erottajaa (– tai :)
 function cleanTitle(title) {
   if (!title) return '';
   const match = title.match(/(?:–|:)\s*(.+)$/);
   if (match && match[1]) return match[1].trim();
-  // Varotoimi: poista myös mahdolliset ryhmänimet alusta
   return title
     .replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '')
     .replace(/^Metsäkylän VPK Nuoriso-osasto\s*[-–:]?\s*/i, '')
     .trim();
 }
 
-// Nimenhuudon tapahtumatyypit → värit (”sinnepäin” sävyt)
 function getDateColor(originalSummary) {
   const t = (originalSummary || '').toLowerCase();
-
-  // Lisää tähän omat sanasi ja värisi
-  if (t.includes('auto')) return '#fc832f';              // Auto
-  if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f'; // Autojen numerot
-  if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638';      // Kalustoesittely
-  if (t.includes('päätös')) return '#fcd854';                                        // Muu tapahtuma
-  if (t.includes('kokous')) return '#fcd854';                                        // Kokous
-  if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638'; // Tapahtumat
-  if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638'; // Jokkis
-  if (t.includes('juhla')) return '#7ab638';                                          // Juhla
-
-  return '#2178a1'; // oletus (sininen)
+  if (t.includes('auto')) return '#fc832f';
+  if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f';
+  if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638';
+  if (t.includes('päätös')) return '#fcd854';
+  if (t.includes('kokous')) return '#fcd854';
+  if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638';
+  if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638';
+  if (t.includes('juhla')) return '#7ab638';
+  return '#2178a1';
 }
 
-// Poista linkit lisätiedoista
 function stripLinks(html) {
   if (!html) return '';
   const div = document.createElement('div');
   div.innerHTML = html;
-  // Poista <a> -tagit
   div.querySelectorAll('a').forEach(a => a.remove());
-  // Poista myös pelkät URLit
   let text = div.textContent || div.innerText || '';
   text = text.replace(/https?:\/\/\S+/g, '').trim();
   return text;
 }
 
-// Päivämäärien muotoilu (sama päivä → kellonajat; useampi päivä → molemmat päivät ja ajat)
 function formatEventDate(startStr, endStr) {
   const start = startStr.includes('T') ? new Date(startStr) : new Date(startStr);
   const end = endStr.includes('T') ? new Date(endStr) : new Date(endStr);
@@ -218,13 +179,10 @@ function formatEventDate(startStr, endStr) {
 
   if (isAllDay) {
     if (sameDay) return start.toLocaleDateString('fi-FI');
-    // all-day monipäiväinen
     return `${start.toLocaleDateString('fi-FI')} – ${end.toLocaleDateString('fi-FI')}`;
   } else if (sameDay) {
-    // sama päivä → näytä kloajat
     return `${start.toLocaleDateString('fi-FI')} klo ${start.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${end.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
   } else {
-    // eri päivät
     return `${start.toLocaleDateString('fi-FI')} klo ${start.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${end.toLocaleDateString('fi-FI')} klo ${end.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
   }
 }
@@ -299,25 +257,3 @@ setTimeout(() => location.reload(), 59 * 60 * 1000);
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
