@@ -19,33 +19,19 @@ body {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 1920px; /* Näyttö täyteen leveydeltään */
+  max-width: 1920px;
   gap: 20px;
 }
 
-.top-container {
-  display: flex;
-  gap: 20px;
-  flex: 1;
-}
-
-.calendar-box {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-}
-
+/* Otsikot */
 .header {
-  text-align: center;
-  font-size: 2em; /* suurempi otsikko TV:lle */
-  padding: 16px;
+  text-align: left;
+  font-size: 2em;
+  padding: 12px 20px;
   font-weight: 700;
   letter-spacing: 1px;
   color: #fff;
+  border-radius: 12px 12px 0 0;
 }
 
 .header.miehistö { background: #007b83; }
@@ -54,78 +40,66 @@ body {
 .events-list {
   padding: 20px;
   background: #e6f2f5;
-  max-height: calc(100vh - 140px); /* täyttää ruudun korkeuden */
+  max-height: calc(100vh - 200px); /* 4-5 korttia ruudulle */
   overflow-y: auto;
 }
 
+/* Kortit koko leveydelle */
 .event-card {
-  display: flex;
-  flex-direction: column;
+  width: 100%;
   border-radius: 12px;
-  margin-bottom: 16px;
-  padding: 14px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   transition: transform 0.2s;
   background: #fefefe;
-  font-size: 1.2em; /* isompi teksti */
+  font-size: 1.4em; /* isompi TV:lle */
 }
 
 .event-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transform: scale(1.01);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
 }
 
 .event-date {
   font-weight: bold;
-  margin-bottom: 8px;
-  font-size: 1.1em;
+  margin-bottom: 12px;
+  font-size: 1.2em;
   color: #fff;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
   display: inline-block;
 }
 
 .event-title {
   font-weight: bold;
-  font-size: 1.2em;
+  font-size: 1.3em;
   word-wrap: break-word;
 }
 
 .event-description {
-  font-size: 1em;
-  color: #444;
-  margin-top: 6px;
+  font-size: 1.1em;
+  color: #333;
+  margin-top: 8px;
   word-wrap: break-word;
 }
 
-@media (max-width: 1024px) {
-  .top-container { flex-direction: column; }
-  .events-list { max-height: 400px; }
-}
-
-@media (max-width: 600px) {
-  .header { font-size: 1.4em; padding: 10px; }
-  .event-card { font-size: 1em; }
-  .events-list { max-height: 300px; }
-}
 </style>
 </head>
 <body>
 
 <div class="container">
 
-  <div class="top-container">
+  <!-- Miehistö -->
+  <div class="calendar-box">
+    <div class="header miehistö">Miehistö</div>
+    <div class="events-list" id="miehisto-events"></div>
+  </div>
 
-    <div class="calendar-box">
-      <div class="header miehistö">Miehistö</div>
-      <div class="events-list" id="miehisto-events"></div>
-    </div>
-
-    <div class="calendar-box">
-      <div class="header nuoriso">Nuoriso-osasto</div>
-      <div class="events-list" id="nuoriso-events"></div>
-    </div>
-
+  <!-- Nuoriso-osasto -->
+  <div class="calendar-box">
+    <div class="header nuoriso">Nuoriso-osasto</div>
+    <div class="events-list" id="nuoriso-events"></div>
   </div>
 
 </div>
@@ -157,7 +131,6 @@ function getDateColor(originalSummary) {
   if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638';
   if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638';
   if (t.includes('juhla')) return '#7ab638';
-  if (t.includes('joulu')) return '#7ab638';
   return '#2178a1';
 }
 
@@ -174,7 +147,6 @@ function stripLinks(html) {
 function formatEventDate(startStr, endStr) {
   const start = startStr.includes('T') ? new Date(startStr) : new Date(startStr);
   const end = endStr.includes('T') ? new Date(endStr) : new Date(endStr);
-
   const sameDay = start.toDateString() === end.toDateString();
   const isAllDay = !startStr.includes('T') && !endStr.includes('T');
 
@@ -192,7 +164,7 @@ function formatEventDate(startStr, endStr) {
 function fetchEvents(calendarId) {
   const now = new Date().toISOString();
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events` +
-              `?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=30`;
+              `?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=10`;
   return fetch(url).then(res => res.json());
 }
 
@@ -258,4 +230,3 @@ setTimeout(() => location.reload(), 59 * 60 * 1000);
 
 </body>
 </html>
-
