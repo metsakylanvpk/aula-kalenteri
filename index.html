@@ -40,7 +40,7 @@
     z-index: 9999;
   }
 
-  /* SLIDE: ei display:none -> käytetään opacitya */
+  /* SLIDE: ei display:none -> opacity + pointer-events */
   .slide {
     position: absolute; inset: 0;
     opacity: 0; pointer-events: none;
@@ -91,9 +91,13 @@
     width: 100%; height: 100%;
     display: flex; align-items: center; justify-content: center;
     background: #f3f5f7;
+    overflow: hidden;
   }
-  #foreca-daily-weather-TDuVRzzeNw,
-  #foreca-current-weather-OwCjwleDmy { width: 100%; height: 100%; position: relative; }
+  .foreca-mount {
+    width: 100%; height: 100%;
+    max-width: 1920px; max-height: 1080px;
+    margin: 0 auto; position: relative;
+  }
 
   /* ---- VAROITUKSET ---- */
   .warn-wrap {
@@ -136,7 +140,7 @@
   .lvl-orange .warn-icon { background: #ff9800; }
   .lvl-red    .warn-icon { background: #e53935; }
 
-  /* Mobiili / pienempi korkeus: scroll ja korttien vapautus */
+  /* Mobiili / pienempi korkeus */
   @media (max-width: 1024px), (max-height: 900px) {
     html, body { overflow: auto; }
     .events-list { overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -162,54 +166,20 @@
   </div>
 </section>
 
-<!-- SLIDE 2: Foreca – Päivittäinen -->
+<!-- SLIDE 2: Foreca – Päivittäinen (LAZY) -->
 <section class="slide" id="slide-foreca">
   <div class="foreca-holder">
-    <div id="foreca-daily-weather-TDuVRzzeNw"
-      data-forecawidget="foreca-daily-weather"
-      data-theme="weather"
-      data-widgetid="TDuVRzzeNw"
-      data-locationid="100644171"
-      data-windunit="ms"
-      data-tempunit="C"
-      data-rainunit="mm"
-      data-language="fi">
-      <script defer data-cfasync="false" type="text/javascript"
-        src="https://www.forecabox.com/dist/daily.min.js"
-        onload="loadDaily('TDuVRzzeNw')"></script>
-      <a id="foreca-attribution-TDuVRzzeNw" href="https://www.foreca.com/"
-         rel="noopener" target="_blank"
-         style="position:absolute;bottom:10px;left:10px;">
-        <img alt="Weather by Foreca"
-             src="https://www.foreca.com/public/images/logo/black.svg"
-             width="100" height="25"/>
-      </a>
+    <div id="foreca-daily-mount" class="foreca-mount">
+      <!-- lisätään widget tähän vasta kun slide aktivoidaan -->
     </div>
   </div>
 </section>
 
-<!-- SLIDE 3: Foreca – Current -->
+<!-- SLIDE 3: Foreca – Current (LAZY) -->
 <section class="slide" id="slide-foreca-current">
   <div class="foreca-current">
-    <div id="foreca-current-weather-OwCjwleDmy"
-      data-forecawidget="foreca-current-weather"
-      data-theme="weather"
-      data-widgetid="OwCjwleDmy"
-      data-locationid="100644171"
-      data-windunit="ms"
-      data-tempunit="C"
-      data-rainunit="mm"
-      data-language="fi">
-      <script defer data-cfasync="false" type="text/javascript"
-        src="https://www.forecabox.com/dist/current.min.js"
-        onload="loadCurrentConditions('OwCjwleDmy')"></script>
-      <a id="foreca-attribution-OwCjwleDmy" href="https://www.foreca.com/"
-         rel="noopener" target="_blank"
-         style="position:absolute;bottom:10px;left:10px;">
-        <img alt="Weather by Foreca"
-             src="https://www.foreca.com/public/images/logo/black.svg"
-             width="100" height="25"/>
-      </a>
+    <div id="foreca-current-mount" class="foreca-mount">
+      <!-- lisätään widget tähän vasta kun slide aktivoidaan -->
     </div>
   </div>
 </section>
@@ -370,7 +340,7 @@ function renderEvents(containerId, payload) {
   });
 }
 
-/* ===== VAROITUKSET (Open-Meteo / Meteoalarm: FMI Suomessa) ===== */
+/* ===== VAROITUKSET (Open-Meteo / Meteoalarm) ===== */
 async function loadWarnings(lat, lon) {
   try {
     const url = `https://api.open-meteo.com/v1/warnings?latitude=${lat}&longitude=${lon}&timezone=auto&_=${Date.now()}`;
@@ -414,19 +384,77 @@ function renderWarnings(data){
   });
 }
 
-/* ===== SLIDE KIERRÄTYS + Foreca re-init ===== */
+/* ===== FORECA LAZY MOUNT ===== */
+let dailyMounted = false;
+let currentMounted = false;
+
+function mountForecaDaily(){
+  if (dailyMounted) return;
+  const mount = document.getElementById('foreca-daily-mount');
+  mount.innerHTML = `
+    <div id="foreca-daily-weather-TDuVRzzeNw"
+      data-forecawidget="foreca-daily-weather"
+      data-theme="weather"
+      data-widgetid="TDuVRzzeNw"
+      data-locationid="100644171"
+      data-windunit="ms"
+      data-tempunit="C"
+      data-rainunit="mm"
+      data-language="fi"
+      style="width:100%;height:100%;position:relative;">
+    </div>
+  `;
+  const s = document.createElement('script');
+  s.defer = true;
+  s.setAttribute('data-cfasync','false');
+  s.src = 'https://www.forecabox.com/dist/daily.min.js';
+  s.onload = () => { try { window.loadDaily && window.loadDaily('TDuVRzzeNw'); } catch(_){} };
+  document.body.appendChild(s);
+  dailyMounted = true;
+}
+
+function mountForecaCurrent(){
+  if (currentMounted) return;
+  const mount = document.getElementById('foreca-current-mount');
+  mount.innerHTML = `
+    <div id="foreca-current-weather-OwCjwleDmy"
+      data-forecawidget="foreca-current-weather"
+      data-theme="weather"
+      data-widgetid="OwCjwleDmy"
+      data-locationid="100644171"
+      data-windunit="ms"
+      data-tempunit="C"
+      data-rainunit="mm"
+      data-language="fi"
+      style="width:100%;height:100%;position:relative;">
+    </div>
+  `;
+  const s = document.createElement('script');
+  s.defer = true;
+  s.setAttribute('data-cfasync','false');
+  s.src = 'https://www.forecabox.com/dist/current.min.js';
+  s.onload = () => { try { window.loadCurrentConditions && window.loadCurrentConditions('OwCjwleDmy'); } catch(_){} };
+  document.body.appendChild(s);
+  currentMounted = true;
+}
+
+/* Kun Foreca-slide aktivoidaan myöhemmin, herätellään mittaus */
+function nudgeResize(){
+  window.dispatchEvent(new Event('resize'));
+}
+
+/* ===== SLIDE KIERRÄTYS ===== */
 const slideIds = [ 'slide-events', 'slide-foreca', 'slide-foreca-current', 'slide-warnings' ];
 let currentSlide = 0;
+
 function showSlide(i){
   slideIds.forEach((id,idx)=>document.getElementById(id).classList.toggle('active', idx===i));
-  // Re-init Foreca kun slide aktivoituu (varmistaa renderöinnin)
-  if (slideIds[i] === 'slide-foreca' && typeof loadDaily === 'function') {
-    try { loadDaily('TDuVRzzeNw'); } catch(_) {}
-  }
-  if (slideIds[i] === 'slide-foreca-current' && typeof loadCurrentConditions === 'function') {
-    try { loadCurrentConditions('OwCjwleDmy'); } catch(_) {}
-  }
+
+  // Mount Foreca lazily kun slide tulee ekaa kertaa näkyviin:
+  if (slideIds[i] === 'slide-foreca'){ mountForecaDaily(); setTimeout(nudgeResize, 50); }
+  if (slideIds[i] === 'slide-foreca-current'){ mountForecaCurrent(); setTimeout(nudgeResize, 50); }
 }
+
 function startCarousel(){
   setInterval(()=>{ currentSlide=(currentSlide+1)%slideIds.length; showSlide(currentSlide); }, SWITCH_MS);
 }
@@ -446,7 +474,7 @@ async function init(){
   const events = await loadICS(ICS_URL());
   renderEvents('miehisto-events', events);
 
-  // Varoitukset (Meteoalarm / FMI FI:ssä)
+  // Varoitukset
   const warns = await loadWarnings(LAT, LON);
   renderWarnings(warns);
 
@@ -454,7 +482,7 @@ async function init(){
   showSlide(0);
   startCarousel();
 
-  // Päivitykset: tapahtumat 5 min välein, varoitukset 10 min välein
+  // Päivitykset: tapahtumat 5 min, varoitukset 10 min
   setInterval(async () => {
     const e = await loadICS(ICS_URL());
     renderEvents('miehisto-events', e);
