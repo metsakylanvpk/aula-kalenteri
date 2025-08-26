@@ -40,7 +40,7 @@ body {
 .events-list {
   padding: 20px;
   background: #e6f2f5;
-  max-height: calc(100vh - 350px); /* 4-5 korttia ruudulle */
+  max-height: calc(100vh - 100px); /* 4-5 korttia ruudulle */
   overflow-y: auto;
 }
 
@@ -224,12 +224,13 @@ Promise.all([
   document.getElementById('nuoriso-events').innerHTML = '<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div></div>';
 });
 
-// Autopäivitys 1 min välein
-setTimeout(() => location.reload(), 1 * 60 * 1000);
+// Autopäivitys 59 min välein
+setTimeout(() => location.reload(), 59 * 60 * 1000);
 </script>
 
 </body>
 </html>
+
 
 
 
