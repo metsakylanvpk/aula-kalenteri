@@ -1,112 +1,59 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Miehistön Tapahtumat – FullHD</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
   :root{
-    --gap: 12px;             /* väli korttien välillä */
-    --header-h: 64px;        /* otsikon korkeus */
-    --header-font: 1.6rem;   /* otsikon fonttikoko */
     --gap: 12px;
     --header-h: 64px;
     --header-font: 1.6rem;
+    --card-pad-v: 16px;
+    --card-pad-h: 20px;
+    --title-size: 1.45rem;
+    --date-size: 1.3rem;
+    --desc-size: 1.15rem;
   }
-
   html, body {
-    margin: 0;
-    width: 100vw; height: 100vh;
-    overflow: hidden;
-    background: #e9eef3;
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    color: #111;
+    margin: 0; width: 100vw; height: 100vh; overflow: hidden;
+    background: #e9eef3; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; color: #111;
   }
-
-  .container {
-    width: 100vw; height: 100vh;
-    display: flex; flex-direction: column;
-    box-sizing: border-box;
-    padding: 8px;
-  }
-
+  .container { width: 100vw; height: 100vh; display: flex; flex-direction: column; box-sizing: border-box; padding: 8px; }
   .calendar-box {
-    flex: 1; display: flex; flex-direction: column;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.15);
-    overflow: hidden;
+    flex: 1; display: flex; flex-direction: column; background: #fff;
+    border-radius: 12px; box-shadow: 0 3px 12px rgba(0,0,0,0.15); overflow: hidden;
   }
-
-  /* Otsikko */
   .header {
-    height: var(--header-h);
-    display: flex; align-items: center; justify-content: center;
-    background: #007b83;
-    color: #fff;
-    border-radius: 10px 10px 0 0;
-    font-weight: 700;
-    font-size: var(--header-font);
-    text-align: center;
+    height: var(--header-h); display: flex; align-items: center; justify-content: center;
+    background: #007b83; color: #fff; border-radius: 10px 10px 0 0; font-weight: 700;
+    font-size: var(--header-font); text-align: center;
   }
-
-  .events-list {
-    flex: 1;
-    padding: 12px;
-    background: #e6f2f5;
-    display: flex; flex-direction: column;
-    gap: var(--gap);
-    box-sizing: border-box;
-  }
-
-  /* 5 korttia täsmälleen */
+  .events-list { flex: 1; padding: 12px; background: #e6f2f5; display: flex; flex-direction: column; gap: var(--gap); box-sizing: border-box; }
   .event-card {
     flex: 0 0 calc((100% - (4 * var(--gap))) / 5);
-    display: flex; flex-direction: column;
-    border-radius: 8px;
-    padding: 14px 18px;
-    padding: 16px 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    background: #fefefe;
-    font-size: 1.2rem;
-    font-size: 1.3rem;
-    box-sizing: border-box;
+    display: flex; flex-direction: column; border-radius: 8px; padding: var(--card-pad-v) var(--card-pad-h);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12); background: #fefefe; box-sizing: border-box;
   }
-
   .event-date {
-    font-weight: bold;
-    margin-bottom: 6px;
-    font-size: 1.05rem;
-    font-size: 1.3rem;
-    color: #fff;
-    padding: 4px 8px;
-    padding: 5px 10px;
-    border-radius: 6px;
-    display: inline-block;
+    font-weight: 700; margin-bottom: 6px; font-size: var(--date-size); color: #fff;
+    padding: 5px 10px; border-radius: 6px; display: inline-block;
   }
-
-  .event-title {
-    font-weight: bold;
-    font-size: 1.25rem;
-    line-height: 1.25;
-    font-size: 1.45rem;
-    line-height: 1.3;
-  }
-
+  .event-title { font-weight: 800; font-size: var(--title-size); line-height: 1.3; word-break: break-word; }
   .event-description {
-    font-size: 1rem;
-    font-size: 1.15rem;
-    color: #333;
-    margin-top: 6px;
-    line-height: 1.2;
-    margin-top: 8px;
-    line-height: 1.25;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    font-size: var(--desc-size); color: #333; margin-top: 8px; line-height: 1.25;
+    overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .muted { opacity: .7; font-style: italic; }
+
+  /* Mobiili/tablet: salli sivun/listan scroll */
+  @media (max-width: 1024px), (max-height: 900px) {
+    html, body { overflow: auto; }
+    .event-card { flex: 0 0 auto; padding: 12px 14px; }
+    .event-date { font-size: 1.05rem; }
+    .event-title { font-size: 1.2rem; line-height: 1.25; }
+    .event-description { -webkit-line-clamp: 3; font-size: 1rem; }
   }
 </style>
 </head>
@@ -116,25 +63,32 @@
   <div class="calendar-box">
     <div class="header">Miehistön Tapahtumat</div>
     <div class="events-list" id="miehisto-events">
-      <div class="event-card">Ladataan tapahtumia…</div>
+      <div class="event-card muted">Ladataan tapahtumia…</div>
     </div>
   </div>
 </div>
 
+<!-- ical parser -->
 <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
+/* ======= ASETUKSET ======= */
 const PROXY = 'https://vpk.mijuze1.workers.dev/?url=';
-const MIEHISTO_ICS_URL = PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical');
+const MIEHISTO_ICS_URL = PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical') + '&_=' + Date.now(); // vältä välimuisti
+const NURMIJARVI = { lat: 60.4646, lon: 24.8071 }; // varalla säätä varten jatkossa
 
+/* Kuinka monta korttia ruudulle: desktop 5, mobiili enemmän (scroll) */
+const IS_MOBILE = matchMedia('(max-width: 1024px)').matches || matchMedia('(max-height: 900px)').matches;
+const SHOW_LIMIT = IS_MOBILE ? 20 : 5;
+
+/* ======= APUFUNKTIOT ======= */
 function cleanTitle(title) {
   if (!title) return '';
-  const match = title.match(/(?:–|:)\s*(.+)$/);
-  if (match && match[1]) return match[1].trim();
+  const m = title.match(/(?:–|:)\s*(.+)$/);
+  if (m && m[1]) return m[1].trim();
   return title.replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '').trim();
 }
-
-function getDateColor(originalSummary) {
-  const t = (originalSummary || '').toLowerCase();
+function getDateColor(summary) {
+  const t = (summary || '').toLowerCase();
   if (t.includes('auto')) return '#fc832f';
   if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f';
   if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638';
@@ -143,10 +97,8 @@ function getDateColor(originalSummary) {
   if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638';
   if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638';
   if (t.includes('juhla')) return '#7ab638';
-  if (t.includes('retki')) return '#fcd854';
   return '#2178a1';
 }
-
 function stripLinks(html) {
   if (!html) return '';
   const div = document.createElement('div');
@@ -154,79 +106,128 @@ function stripLinks(html) {
   div.querySelectorAll('a').forEach(a => a.remove());
   return (div.textContent || div.innerText || '').replace(/https?:\/\/\S+/g, '').trim();
 }
-
 function formatEventDate(startDate, endDate, allDay=false) {
-  const start = new Date(startDate);
-  const end   = new Date(endDate);
-  const sameDay = start.toDateString() === end.toDateString();
+  const s = new Date(startDate), e = new Date(endDate);
+  const sameDay = s.toDateString() === e.toDateString();
   if (allDay) {
-    if (sameDay) return start.toLocaleDateString('fi-FI');
-    return `${start.toLocaleDateString('fi-FI')} – ${end.toLocaleDateString('fi-FI')}`;
+    return sameDay ? s.toLocaleDateString('fi-FI')
+                   : `${s.toLocaleDateString('fi-FI')} – ${e.toLocaleDateString('fi-FI')}`;
   } else if (sameDay) {
-    return `${start.toLocaleDateString('fi-FI')} klo ${start.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${end.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
+    return `${s.toLocaleDateString('fi-FI')} klo ${s.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${e.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
   } else {
-    return `${start.toLocaleDateString('fi-FI')} klo ${start.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${end.toLocaleDateString('fi-FI')} klo ${end.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
+    return `${s.toLocaleDateString('fi-FI')} klo ${s.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${e.toLocaleDateString('fi-FI')} klo ${e.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
+  }
+}
+
+/* ======= ICS LATAUS AIKAKATKAISULLA ======= */
+async function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 8000 } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(resource, { ...options, signal: controller.signal, cache: 'no-store', referrerPolicy: 'no-referrer' });
+    clearTimeout(id);
+    return response;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
   }
 }
 
 async function loadICS(url) {
-  const res = await fetch(url, { cache:'no-store' });
-  const text = await res.text();
-  const jcal = ICAL.parse(text);
-  const comp = new ICAL.Component(jcal);
-  const events = comp.getAllSubcomponents('vevent').map(ve => new ICAL.Event(ve));
-  const now = new Date();
-  return events
-    .filter(ev => ev.endDate && ev.endDate.toJSDate() > now)
-    .map(ev => ({
-      summary: ev.summary || '',
-      description: ev.description || '',
-      startDate: ev.startDate.toJSDate(),
-      endDate: ev.endDate.toJSDate(),
-      allDay: ev.startDate.isDate && ev.endDate.isDate
-    }))
-    .sort((a,b) => a.startDate - b.startDate);
+  try {
+    const res = await fetchWithTimeout(url, { timeout: 8000 });
+    if (!res.ok) {
+      console.error('ICS fetch not OK:', res.status, res.statusText);
+      return { items: [], error: `ICS-palvelu vastasi: ${res.status}` };
+    }
+    const text = await res.text();
+    let events = [];
+    try {
+      const jcal = ICAL.parse(text);
+      const comp = new ICAL.Component(jcal);
+      const vevents = comp.getAllSubcomponents('vevent').map(ve => new ICAL.Event(ve));
+      const now = new Date();
+      events = vevents
+        .filter(ev => ev.endDate && ev.endDate.toJSDate() > now)
+        .map(ev => ({
+          summary: ev.summary || '',
+          description: ev.description || '',
+          startDate: ev.startDate.toJSDate(),
+          endDate: ev.endDate.toJSDate(),
+          allDay: ev.startDate.isDate && ev.endDate.isDate
+        }))
+        .sort((a,b) => a.startDate - b.startDate);
+    } catch (parseErr) {
+      console.error('ICAL parse error:', parseErr);
+      return { items: [], error: 'ICS-datan jäsentäminen epäonnistui' };
+    }
+    return { items: events };
+  } catch (err) {
+    console.error('ICS network error:', err);
+    return { items: [], error: (err.name === 'AbortError' ? 'Yhteyden aikakatkaisu' : 'Verkkovirhe') };
+  }
 }
 
-function renderList(containerId, items) {
+/* ======= RENDER ======= */
+function renderEvents(containerId, payload) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
-  if (!items || !items.length) {
-    container.innerHTML = '<div class="event-card"><div class="event-title">Ei tapahtumia</div></div>';
+  const { items, error } = payload;
+
+  if (error) {
+    container.innerHTML = `<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div><div class="event-description">${error}</div></div>`;
     return;
   }
-  items.slice(0,5).forEach(item => {
+  if (!items || !items.length) {
+    container.innerHTML = '<div class="event-card"><div class="event-title">Ei tulevia tapahtumia</div></div>';
+    return;
+  }
+
+  items.slice(0, SHOW_LIMIT).forEach(item => {
     const title = cleanTitle(item.summary);
     const dateBg = getDateColor(item.summary);
     const description = item.description ? stripLinks(item.description) : '';
+
     const card = document.createElement('div');
     card.className = 'event-card';
+
     const dateEl = document.createElement('div');
     dateEl.className = 'event-date';
     dateEl.style.background = dateBg;
     dateEl.textContent = formatEventDate(item.startDate, item.endDate, item.allDay);
+
     const titleEl = document.createElement('div');
     titleEl.className = 'event-title';
     titleEl.textContent = title;
+
     card.appendChild(dateEl);
     card.appendChild(titleEl);
+
     if (description) {
       const descEl = document.createElement('div');
       descEl.className = 'event-description';
       descEl.textContent = description;
       card.appendChild(descEl);
     }
+
     container.appendChild(card);
   });
 }
 
-async function loadAll() {
-  const events = await loadICS(MIEHISTO_ICS_URL);
-  renderList('miehisto-events', events);
-}
-loadAll();
-setInterval(loadAll, 5*60*1000);
-</script>
+/* ======= INIT ======= */
+async function init() {
+  // 1) Haetaan tapahtumat ICS:stä
+  const data = await loadICS(MIEHISTO_ICS_URL);
+  renderEvents('miehisto-events', data);
 
+  // 2) Uusintahaku 5 min välein
+  setInterval(async () => {
+    const data = await loadICS(PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical') + '&_=' + Date.now());
+    renderEvents('miehisto-events', data);
+  }, 5 * 60 * 1000);
+}
+init();
+</script>
 </body>
 </html>
