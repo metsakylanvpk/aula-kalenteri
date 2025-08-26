@@ -2,104 +2,135 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8">
-<title>Aulan kalenterit</title>
+<title>Aulan kalenterit – Miehistö (6 kpl, FullHD)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body {
-  margin: 0;
-  background: linear-gradient(135deg, #f9f9f9, #e9eef3);
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  min-height: 50vh;
-  display: flex;
-  justify-content: center;
-  padding: 10px;
-}
+  :root{
+    /* FullHD-ikkuna */
+    --vw: 100vw;
+    --vh: 100vh;
 
-.container {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 1920px;
-  gap: 20px;
-}
+    /* mitoitus */
+    --header-h: 96px;        /* otsikkopalkin korkeus */
+    --box-pad: 20px;         /* events-list sisäpadding (ylä/ala oletuksena sama) */
+    --gap: 16px;             /* väli korttien välissä */
 
-/* Otsikot */
-.header {
-  text-align: left;
-  font-size: 2em;
-  padding: 12px 20px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: #fff;
-  border-radius: 12px 12px 0 0;
-}
+    /* typografia */
+    --header-font: 2rem;
+    --title-font: 1.4rem;
+    --date-font: 1.2rem;
+    --desc-font: 1.05rem;
+  }
 
-.header.miehistö { background: #007b83; }
-.header.nuoriso { background: #ff8114; }
+  html, body {
+    margin: 0;
+    width: 100vw; height: 100vh;
+    overflow: hidden; /* ei sivun scrollausta */
+    background: linear-gradient(135deg, #f9f9f9, #e9eef3);
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: #111;
+  }
 
-.events-list {
-  padding: 20px;
-  background: #e6f2f5;
-  max-height: calc(50vh - 50px); /* 4-5 korttia ruudulle */
-  overflow-y: auto;
-}
+  .container {
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+    box-sizing: border-box;
+    padding: 10px; /* pieni reuna TV:llä */
+  }
 
-/* Kortit koko leveydelle */
-.event-card {
-  width: 100%;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transition: transform 0.2s;
-  background: #fefefe;
-  font-size: 1.4em; /* isompi TV:lle */
-}
+  .calendar-box {
+    flex: 1; display: flex; flex-direction: column;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+  }
 
-.event-card:hover {
-  transform: scale(1.01);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
-}
+  /* Otsikko */
+  .header {
+    height: var(--header-h);
+    display: flex; align-items: center;
+    padding: 0 20px;
+    background: #007b83; /* Miehistö */
+    color: #fff;
+    border-radius: 12px 12px 0 0;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-size: var(--header-font);
+  }
 
-.event-date {
-  font-weight: bold;
-  margin-bottom: 12px;
-  font-size: 1.2em;
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 8px;
-  display: inline-block;
-}
+  /* Lista täyttää muun tilan, ei omaa scrollia */
+  .events-list {
+    flex: 1;
+    padding: var(--box-pad);
+    background: #e6f2f5;
+    overflow: hidden; /* ei scrollia */
+    display: flex; flex-direction: column;
+    gap: var(--gap);
+    box-sizing: border-box;
+  }
 
-.event-title {
-  font-weight: bold;
-  font-size: 1.3em;
-  word-wrap: break-word;
-}
+  /* Lasketaan kortin korkeus niin, että 6 kpl mahtuu tarkalleen ilman scrollia
+     Käytössä: kokonaiskorkeus = listan korkeus = (100vh - container padding - box varat)
+     Käytännössä riittää, että jaetaan käytössä oleva tila 6:lle ja vähennetään välit ja paddingit. */
+  .event-card {
+    /* 6 korttia: vähennä 5 väliä ja 2*box-pad pystysuunnassa */
+    flex: 0 0 calc((100% - (5 * var(--gap))) / 6);
+    display: flex; flex-direction: column;
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    background: #fefefe;
+    font-size: var(--title-font);
+    box-sizing: border-box;
+  }
 
-.event-description {
-  font-size: 1.1em;
-  color: #333;
-  margin-top: 8px;
-  word-wrap: break-word;
-}
+  .event-card:hover {
+    outline: 2px solid rgba(0,0,0,0.06);
+  }
 
+  .event-date {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: var(--date-font);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    display: inline-block;
+    line-height: 1.15;
+  }
+
+  .event-title {
+    font-weight: bold;
+    word-wrap: break-word;
+    line-height: 1.2;
+  }
+
+  .event-description {
+    font-size: var(--desc-font);
+    color: #333;
+    margin-top: 8px;
+    word-wrap: break-word;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;      /* lyhyt kuvaus, ettei venytä korttia */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .muted { opacity:.7; font-style: italic; }
 </style>
 </head>
 <body>
 
 <div class="container">
 
-  <!-- Miehistö -->
+  <!-- VAIN MIEHISTÖ -->
   <div class="calendar-box">
-    <div class="header miehistö">Miehistö</div>
-    <div class="events-list" id="miehisto-events"></div>
-  </div>
-
-  <!-- Nuoriso-osasto -->
-  <div class="calendar-box">
-    <div class="header nuoriso">Nuoriso-osasto</div>
-    <div class="events-list" id="nuoriso-events"></div>
+    <div class="header">Miehistö</div>
+    <div class="events-list" id="miehisto-events">
+      <div class="event-card muted">Ladataan tapahtumia…</div>
+    </div>
   </div>
 
 </div>
@@ -108,7 +139,6 @@ body {
 /* --- ASETUKSET --- */
 const API_KEY = 'AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs';
 const MIEHISTO_CALENDAR_ID = '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com';
-const NUORISO_CALENDAR_ID = 'pfibgctlru8apgqvhrhcq1jbnod644un@import.calendar.google.com';
 
 /* --- APUFUNKTIOT --- */
 function cleanTitle(title) {
@@ -160,25 +190,28 @@ function formatEventDate(startStr, endStr) {
   }
 }
 
-/* --- DATAN HAKU --- */
+/* --- DATAN HAKU (vain Miehistö) --- */
 function fetchEvents(calendarId) {
   const now = new Date().toISOString();
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events` +
-              `?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=10`;
+              `?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=20`;
   return fetch(url).then(res => res.json());
 }
 
-/* --- RENDERÖINTI --- */
+/* --- RENDERÖINTI (6 kpl, ei scrollia) --- */
 function renderEvent(containerId, events) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
 
-  if (!events || !Array.isArray(events)) {
+  if (!events || !Array.isArray(events) || events.length === 0) {
     container.innerHTML = '<div class="event-card"><div class="event-title">Ei tapahtumia</div></div>';
     return;
   }
 
-  events.forEach(item => {
+  // Näytetään tasan 6 tulevaa / käynnissä olevaa tapahtumaa
+  const items = events.slice(0, 6);
+
+  items.forEach(item => {
     const start = (item.start && (item.start.dateTime || item.start.date)) || '';
     const end   = (item.end   && (item.end.dateTime   || item.end.date))   || '';
     const originalSummary = item.summary || '';
@@ -213,29 +246,16 @@ function renderEvent(containerId, events) {
 }
 
 /* --- KÄYTTÖ --- */
-Promise.all([
-  fetchEvents(MIEHISTO_CALENDAR_ID),
-  fetchEvents(NUORISO_CALENDAR_ID)
-]).then(([miehistoData, nuorisoData]) => {
-  renderEvent('miehisto-events', miehistoData.items);
-  renderEvent('nuoriso-events', nuorisoData.items);
-}).catch(() => {
-  document.getElementById('miehisto-events').innerHTML = '<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div></div>';
-  document.getElementById('nuoriso-events').innerHTML = '<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div></div>';
-});
+fetchEvents(MIEHISTO_CALENDAR_ID)
+  .then((miehistoData) => renderEvent('miehisto-events', miehistoData.items))
+  .catch(() => {
+    document.getElementById('miehisto-events').innerHTML =
+      '<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div></div>';
+  });
 
-// Autopäivitys 59 min välein
+/* Autopäivitys 59 min välein (voit muuttaa) */
 setTimeout(() => location.reload(), 59 * 60 * 1000);
 </script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
