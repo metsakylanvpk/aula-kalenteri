@@ -2,18 +2,24 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8">
-<title>Aulan kalenterit – Miehistö (6 kpl, FullHD)</title>
+<title>Miehistön tapahtumat – FullHD (6 kpl, Worker-ICS)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- nopeampi yhteys proxyyn -->
+<link rel="preconnect" href="https://vpk.mijuze1.workers.dev">
+<link rel="dns-prefetch" href="https://vpk.mijuze1.workers.dev">
+
 <style>
   :root{
-    /* FullHD-ikkuna */
+    /* FullHD-ruutu */
     --vw: 100vw;
     --vh: 100vh;
 
     /* mitoitus */
-    --header-h: 96px;        /* otsikkopalkin korkeus */
-    --box-pad: 20px;         /* events-list sisäpadding (ylä/ala oletuksena sama) */
-    --gap: 16px;             /* väli korttien välissä */
+    --header-h: 96px;        /* otsikon korkeus */
+    --container-pad: 10px;   /* koko näkymän sisäreuna */
+    --list-pad: 20px;        /* listan sisäpadding (ylä+ala) */
+    --gap: 16px;             /* korttien välit */
 
     /* typografia */
     --header-font: 2rem;
@@ -25,7 +31,7 @@
   html, body {
     margin: 0;
     width: 100vw; height: 100vh;
-    overflow: hidden; /* ei sivun scrollausta */
+    overflow: hidden; /* ei sivun scrollia */
     background: linear-gradient(135deg, #f9f9f9, #e9eef3);
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     color: #111;
@@ -35,14 +41,14 @@
     width: 100vw; height: 100vh;
     display: flex; flex-direction: column;
     box-sizing: border-box;
-    padding: 10px; /* pieni reuna TV:llä */
+    padding: var(--container-pad);
   }
 
   .calendar-box {
     flex: 1; display: flex; flex-direction: column;
     background: #fff;
     border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     overflow: hidden;
   }
 
@@ -62,19 +68,17 @@
   /* Lista täyttää muun tilan, ei omaa scrollia */
   .events-list {
     flex: 1;
-    padding: var(--box-pad);
+    padding: var(--list-pad);
     background: #e6f2f5;
-    overflow: hidden; /* ei scrollia */
+    overflow: hidden; /* EI scrollia */
     display: flex; flex-direction: column;
     gap: var(--gap);
     box-sizing: border-box;
   }
 
-  /* Lasketaan kortin korkeus niin, että 6 kpl mahtuu tarkalleen ilman scrollia
-     Käytössä: kokonaiskorkeus = listan korkeus = (100vh - container padding - box varat)
-     Käytännössä riittää, että jaetaan käytössä oleva tila 6:lle ja vähennetään välit ja paddingit. */
+  /* 6 korttia: korkeus = (tilan koko - 5 väliä) / 6
+     Tilana käytetään .events-list -elementin sisäkorkeutta (flex-konteksti) */
   .event-card {
-    /* 6 korttia: vähennä 5 väliä ja 2*box-pad pystysuunnassa */
     flex: 0 0 calc((100% - (5 * var(--gap))) / 6);
     display: flex; flex-direction: column;
     border-radius: 12px;
@@ -85,9 +89,7 @@
     box-sizing: border-box;
   }
 
-  .event-card:hover {
-    outline: 2px solid rgba(0,0,0,0.06);
-  }
+  .event-card:hover { outline: 2px solid rgba(0,0,0,0.06); }
 
   .event-date {
     font-weight: bold;
@@ -124,7 +126,6 @@
 <body>
 
 <div class="container">
-
   <!-- VAIN MIEHISTÖ -->
   <div class="calendar-box">
     <div class="header">Miehistö</div>
@@ -132,15 +133,21 @@
       <div class="event-card muted">Ladataan tapahtumia…</div>
     </div>
   </div>
-
 </div>
 
+<!-- iCal parseri -->
+<script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
-/* --- ASETUKSET --- */
-const API_KEY = 'AIzaSyBh7OYl9olkOsbOICvDdTgmMYa9eiraDAs';
-const MIEHISTO_CALENDAR_ID = '6fdpm0662hoerp1shdfdjskdbbei1dfe@import.calendar.google.com';
+/* --------------------------
+   ASETUKSET (Worker-proxy)
+--------------------------- */
+const PROXY = 'https://vpk.mijuze1.workers.dev/?url=';
+const MIEHISTO_ICS_URL = PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical');
 
-/* --- APUFUNKTIOT --- */
+/* --------------------------
+   APUFUNKTIOT
+--------------------------- */
+// Poistaa kaiken ennen viimeistä erottajaa (– tai :)
 function cleanTitle(title) {
   if (!title) return '';
   const match = title.match(/(?:–|:)\s*(.+)$/);
@@ -151,6 +158,7 @@ function cleanTitle(title) {
     .trim();
 }
 
+// Tapahtumatyyppi -> väri (päivämäärän taustan väri)
 function getDateColor(originalSummary) {
   const t = (originalSummary || '').toLowerCase();
   if (t.includes('auto')) return '#fc832f';
@@ -164,6 +172,7 @@ function getDateColor(originalSummary) {
   return '#2178a1';
 }
 
+// Poista linkit lisätiedoista
 function stripLinks(html) {
   if (!html) return '';
   const div = document.createElement('div');
@@ -174,13 +183,13 @@ function stripLinks(html) {
   return text;
 }
 
-function formatEventDate(startStr, endStr) {
-  const start = startStr.includes('T') ? new Date(startStr) : new Date(startStr);
-  const end = endStr.includes('T') ? new Date(endStr) : new Date(endStr);
+// Päivämäärien muotoilu
+function formatEventDate(startDate, endDate, allDay=false) {
+  const start = new Date(startDate);
+  const end   = new Date(endDate);
   const sameDay = start.toDateString() === end.toDateString();
-  const isAllDay = !startStr.includes('T') && !endStr.includes('T');
 
-  if (isAllDay) {
+  if (allDay) {
     if (sameDay) return start.toLocaleDateString('fi-FI');
     return `${start.toLocaleDateString('fi-FI')} – ${end.toLocaleDateString('fi-FI')}`;
   } else if (sameDay) {
@@ -190,30 +199,64 @@ function formatEventDate(startStr, endStr) {
   }
 }
 
-/* --- DATAN HAKU (vain Miehistö) --- */
-function fetchEvents(calendarId) {
-  const now = new Date().toISOString();
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events` +
-              `?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=20`;
-  return fetch(url).then(res => res.json());
+// pieni timeout ettei jää roikkumaan
+async function fetchWithTimeout(url, ms=10000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const res = await fetch(url, { signal: ctl.signal, cache: 'no-store' });
+    clearTimeout(t);
+    return res;
+  } catch (e) {
+    clearTimeout(t);
+    throw e;
+  }
 }
 
-/* --- RENDERÖINTI (6 kpl, ei scrollia) --- */
-function renderEvent(containerId, events) {
+/* --------------------------
+   ICS → lista (vain tulevat)
+--------------------------- */
+async function loadICS(url) {
+  const res = await fetchWithTimeout(url);
+  if (!res.ok) throw new Error('ICS fetch failed: ' + res.status);
+  const text = await res.text();
+
+  const jcal = ICAL.parse(text);
+  const comp = new ICAL.Component(jcal);
+  const events = comp.getAllSubcomponents('vevent').map(ve => new ICAL.Event(ve));
+
+  const now = new Date();
+  return events
+    .filter(ev => ev.endDate && ev.endDate.toJSDate() > now)
+    .map(ev => {
+      const start = ev.startDate.toJSDate();
+      const end   = ev.endDate.toJSDate();
+      const allDay = ev.startDate.isDate && ev.endDate.isDate;
+      return {
+        summary: ev.summary || '',
+        description: (ev.description || ''),
+        startDate: start,
+        endDate: end,
+        allDay
+      };
+    })
+    .sort((a,b) => a.startDate - b.startDate);
+}
+
+/* --------------------------
+   Renderöinti (6 kpl, ei scrollia)
+--------------------------- */
+function renderList(containerId, items) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
 
-  if (!events || !Array.isArray(events) || events.length === 0) {
+  if (!items || !items.length) {
     container.innerHTML = '<div class="event-card"><div class="event-title">Ei tapahtumia</div></div>';
     return;
   }
 
-  // Näytetään tasan 6 tulevaa / käynnissä olevaa tapahtumaa
-  const items = events.slice(0, 6);
-
-  items.forEach(item => {
-    const start = (item.start && (item.start.dateTime || item.start.date)) || '';
-    const end   = (item.end   && (item.end.dateTime   || item.end.date))   || '';
+  // Näytä tasan 6 ensimmäistä
+  items.slice(0, 6).forEach(item => {
     const originalSummary = item.summary || '';
     const title = cleanTitle(originalSummary);
     const dateBg = getDateColor(originalSummary);
@@ -225,7 +268,7 @@ function renderEvent(containerId, events) {
     const dateEl = document.createElement('div');
     dateEl.className = 'event-date';
     dateEl.style.background = dateBg;
-    dateEl.textContent = formatEventDate(start, end);
+    dateEl.textContent = formatEventDate(item.startDate, item.endDate, item.allDay);
 
     const titleEl = document.createElement('div');
     titleEl.className = 'event-title';
@@ -245,16 +288,17 @@ function renderEvent(containerId, events) {
   });
 }
 
-/* --- KÄYTTÖ --- */
-fetchEvents(MIEHISTO_CALENDAR_ID)
-  .then((miehistoData) => renderEvent('miehisto-events', miehistoData.items))
-  .catch(() => {
-    document.getElementById('miehisto-events').innerHTML =
-      '<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div></div>';
-  });
+/* --------------------------
+   Käyttö
+--------------------------- */
+async function loadAll() {
+  const events = await loadICS(MIEHISTO_ICS_URL);
+  renderList('miehisto-events', events);
+}
 
-/* Autopäivitys 59 min välein (voit muuttaa) */
-setTimeout(() => location.reload(), 59 * 60 * 1000);
+loadAll();
+/* Päivitä esim. 5 min välein (voit muuttaa tai poistaa) */
+setInterval(loadAll, 5 * 60 * 1000);
 </script>
 
 </body>
