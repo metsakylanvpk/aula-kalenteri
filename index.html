@@ -417,52 +417,82 @@ async function loadWarnings(){
   }
 }
 
+<script>
 /* ===================== 4) DIGITRAFFIC (PK-seutu/Keski-Uusimaa) ===================== */
-const REGION_NAMES = ['Helsinki','Vantaa','Espoo','Kauniainen','Nurmijärvi','Hyvinkää','Järvenpää','Tuusula','Kerava','Sipoo','Kirkkonummi','Vihti','Klaukkala','Uusimaa','Pääkaupunkiseutu','Keski-Uusimaa'];
-// Karkea bbox PK-seutu + Keski-Uusimaa (lat,lon)
-const BBOX = { minLat:60.1, maxLat:60.6, minLon:24.2, maxLon:25.4 };
+/* Vaihda tarvittaessa PROXY aiemmin määriteltyyn samaan muuttujaan */
+const REGION_NAMES = [
+  'Helsinki','Vantaa','Espoo','Kauniainen','Nurmijärvi','Hyvinkää','Järvenpää','Tuusula',
+  'Kerava','Sipoo','Kirkkonummi','Vihti','Klaukkala','Uusimaa','Pääkaupunkiseutu','Keski-Uusimaa'
+];
+// karkea bbox PK-seutu + Keski-Uusimaa
+const BBOX = { minLat:60.1, maxLat:60.7, minLon:24.1, maxLon:25.6 };
 
+// apusuodattimet
 function inRegionByName(m){
-  const join = (txt)=> (txt||'').toString().toLowerCase();
-  const blob = join(m.title)+' '+join(m.announcement)+' '+join(m.location)+' '+join(m.roadAddressRegion)+' '+join(m.municipality);
-  return REGION_NAMES.some(w=>blob.includes(w.toLowerCase()));
+  const toL = (x)=> (x||'').toString().toLowerCase();
+  const blob = [m.title,m.announcement,m.location,m.roadAddressRegion,m.municipality,
+                m.roadAddressMunicipality,m.regionName].map(toL).join(' ');
+  return REGION_NAMES.some(w=> blob.includes(w.toLowerCase()));
 }
 function inRegionByCoord(m){
-  const lat = m?.latitude ?? m?.lat ?? m?.location?.lat ?? m?.roadAddress?.lat;
-  const lon = m?.longitude ?? m?.lon ?? m?.location?.lon ?? m?.roadAddress?.lon;
+  const lat = m?.latitude ?? m?.lat ?? m?.location?.lat ?? m?.roadAddress?.lat ?? m?.geometeryLat;
+  const lon = m?.longitude ?? m?.lon ?? m?.location?.lon ?? m?.roadAddress?.lon ?? m?.geometeryLon;
   if (!isFinite(lat) || !isFinite(lon)) return false;
   return lat>=BBOX.minLat && lat<=BBOX.maxLat && lon>=BBOX.minLon && lon<=BBOX.maxLon;
 }
+
+// nosta kentät yhtenäiseen muotoon
 function materializeTrafficItem(m){
   const title = m.title || m.announcement || m.eventType || 'Liikennetiedote';
   const time  = m.releaseTime || m.publicationTime || m.eventTime || m.lastUpdated || m.validFrom || '';
   const when  = time ? new Date(time).toLocaleString('fi-FI') : '';
-  const region= m.roadAddressRegion || m.location || m.municipality || '';
-  const road  = m.roadNumber ? `VT ${m.roadNumber}` : (m.road?.number ? `VT ${m.road.number}` : (m.road ? `VT ${m.road}` : ''));
+  const region= m.roadAddressRegion || m.location || m.municipality || m.roadAddressMunicipality || '';
+  const roadNo= m.roadNumber || m?.road?.number || m.road;
+  const road  = roadNo ? `VT ${roadNo}` : '';
   const desc  = m.description || m.cause || m.shortDescription || m.category || '';
   const where = [region, road].filter(Boolean).join(' • ');
   return { title, when, desc, where };
 }
+
 async function loadTraffic(){
   const box = document.getElementById('traffic-list');
   box.innerHTML = '<div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>';
   try{
-    const api = 'https://tie.digitraffic.fi/api/traffic-message/v1/messages?inactiveHours=0';
-    const r = await fetchWithTimeout(PROXY + encodeURIComponent(api) + '&_=' + Date.now(), 12000);
+    // Uudempi, kevyt JSON (ilman area geometrioita). activeOnly=true -> turhat pois
+    const api = 'https://tie.digitraffic.fi/api/traffic-message/v1/messages?activeOnly=true&includeAreaGeometry=false';
+    const url = PROXY + encodeURIComponent(api) + '&_=' + Date.now();
+
+    const r = await fetch(url, {
+      // Suositeltu tunniste (ohje: Digitraffic-User), proxy välittää sen eteenpäin
+      headers: { 'Digitraffic-User': 'metsakylanvpk-aulanaytto/1.0' },
+      cache: 'no-store'
+    });
     if(!r.ok) throw new Error('traffic '+r.status);
+
     const data = await r.json();
 
-    // Yritä useita muotoja
-    let msgs = data?.trafficMessages || data?.messages || [];
-    if (!Array.isArray(msgs) && Array.isArray(data?.features)) {
-      msgs = data.features.map(f => ({...f.properties, latitude: f.geometry?.coordinates?.[1], longitude: f.geometry?.coordinates?.[0]}));
+    // Data voi tulla eri rakenteilla. Kokeillaan yleisimmät.
+    let msgs = [];
+    if (Array.isArray(data)) {
+      msgs = data; // joissain vastauksissa lista suoraan
+    } else if (Array.isArray(data?.trafficMessages)) {
+      msgs = data.trafficMessages;
+    } else if (Array.isArray(data?.messages)) {
+      msgs = data.messages;
+    } else if (Array.isArray(data?.features)) {
+      // GeoJSON: siirretään koordinaatit propertyihin
+      msgs = data.features.map(f => ({
+        ...f.properties,
+        latitude:  f.geometry?.coordinates?.[1],
+        longitude: f.geometry?.coordinates?.[0],
+      }));
     }
 
-    // Suodata alueelle
+    // Suodata PK-seutu/Keski-Uusimaa; jos dataa jää liian vähän, näytä silti jotain
     let list = msgs.filter(m => inRegionByName(m) || inRegionByCoord(m));
-    if (list.length < 8) list = msgs; // fallback jos data on niukkaa
+    if (list.length < 6) list = msgs; // fallback
 
-    const html = list.slice(0, 16).map(m=>{
+    const html = list.slice(0, 14).map(m=>{
       const it = materializeTrafficItem(m);
       return `<div class="traffic-item">
         <div class="t-title">${it.title}</div>
@@ -470,11 +500,14 @@ async function loadTraffic(){
         ${it.desc ? `<div class="t-desc">${it.desc}</div>` : ''}
       </div>`;
     }).join('');
+
     box.innerHTML = html || '<div class="traffic-item"><div class="t-title">Ei ajankohtaisia tiedotteita</div></div>';
-  }catch{
+  }catch(e){
     box.innerHTML = '<div class="traffic-item"><div class="t-title">Liikennetietoja ei voitu hakea</div></div>';
   }
 }
+</script>
+
 
 /* ===================== INIT + PÄIVITYSSYKLI ===================== */
 async function init(){
@@ -493,3 +526,4 @@ init();
 </script>
 </body>
 </html>
+
