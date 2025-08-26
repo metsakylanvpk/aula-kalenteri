@@ -17,14 +17,14 @@
     --date-size: 1.3rem;
     --desc-size: 1.15rem;
 
-    --switch-ms: 20000;
+    --switch-ms: 20000; /* 20 s */
   }
 
   html, body {
     margin: 0; width: 100vw; height: 100vh;
     background: #e9eef3; color: #111;
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    overflow: hidden;
+    overflow: hidden; /* TV: ei sivuscrollia */
   }
 
   /* Kello oikeaan yläkulmaan */
@@ -40,80 +40,96 @@
     z-index: 9999;
   }
 
-  .slide {
-    position: absolute; inset: 0;
-    display: none;
-  }
+  /* Yleinen slide-alue */
+  .slide { position: absolute; inset: 0; display: none; }
   .slide.active { display: block; }
 
+  /* ---- TAPAHTUMAT ---- */
   .events-wrap {
     width: 100%; height: 100%;
     display: flex; flex-direction: column;
     background: #fff;
+    box-shadow: 0 3px 12px rgba(0,0,0,.15);
     overflow: hidden;
   }
   .header {
     height: var(--header-h);
     display: flex; align-items: center; justify-content: center;
-    background: #007b83; color: #fff; font-weight: 700;
-    font-size: var(--header-font);
+    background: #007b83; color: #fff; font-weight: 700; font-size: var(--header-font);
   }
   .events-list {
     flex: 1; padding: 12px; background: #e6f2f5;
     display: flex; flex-direction: column; gap: var(--gap);
+    box-sizing: border-box;
   }
+  /* 5 korttia 1080p:lle */
   .event-card {
     flex: 0 0 calc((100% - (4 * var(--gap))) / 5);
     display: flex; flex-direction: column;
     border-radius: 8px; padding: var(--card-pad-v) var(--card-pad-h);
-    box-shadow: 0 2px 8px rgba(0,0,0,.12); background: #fefefe;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12); background: #fefefe; box-sizing: border-box;
   }
   .event-date {
     font-weight: 700; margin-bottom: 6px; font-size: var(--date-size);
     color: #fff; padding: 5px 10px; border-radius: 6px; display: inline-block;
   }
-  .event-title { font-weight: 800; font-size: var(--title-size); }
+  .event-title { font-weight: 800; font-size: var(--title-size); line-height: 1.3; word-break: break-word; }
   .event-description {
-    font-size: var(--desc-size); color: #333; margin-top: 8px;
-    overflow: hidden; text-overflow: ellipsis; -webkit-line-clamp: 2; -webkit-box-orient: vertical; display: -webkit-box;
+    font-size: var(--desc-size); color: #333; margin-top: 8px; line-height: 1.25;
+    overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   }
   .muted { opacity:.7; font-style: italic; }
 
+  /* ---- FORECA ---- */
   .foreca-holder, .foreca-current {
     width: 100%; height: 100%;
     display: flex; align-items: center; justify-content: center;
     background: #f3f5f7;
   }
   #foreca-daily-weather-TDuVRzzeNw,
-  #foreca-current-weather-OwCjwleDmy { width: 100%; height: 100%; }
+  #foreca-current-weather-OwCjwleDmy { width: 100%; height: 100%; position: relative; }
 
+  /* ---- VAROITUKSET ---- */
   .warn-wrap {
     width: 100%; height: 100%;
     display: grid; grid-template-rows: var(--header-h) 1fr;
     background: #fff;
+    box-shadow: 0 3px 12px rgba(0,0,0,.15);
   }
   .warn-header {
     display: flex; align-items: center; justify-content: center;
     background: #3b4252; color: #fff; font-weight: 700; font-size: var(--header-font);
   }
   .warn-body {
-    background: #eef2f5; padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    background: #eef2f5; padding: 14px; overflow: hidden;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    box-sizing: border-box;
   }
   .warn-box {
     background: #fff; border-radius: 10px; padding: 12px 14px;
     box-shadow: 0 2px 8px rgba(0,0,0,.12);
     display: flex; flex-direction: column; gap: 8px;
   }
-  .warn-empty { grid-column: 1 / -1; text-align: center; padding: 20px; }
-
+  .warn-empty {
+    grid-column: 1 / -1; text-align: center; font-size: 1.2rem; color: #333; padding: 20px;
+    background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  }
+  .w-title { font-weight: 800; font-size: 1.25rem; }
+  .w-when { font-size: 1rem; opacity: .8; }
+  .w-desc { font-size: 1.05rem; }
   .lvl-yellow { border-left: 8px solid #f2c744; background: #fff9e6; }
   .lvl-orange { border-left: 8px solid #ff9800; background: #fff2e0; }
   .lvl-red    { border-left: 8px solid #e53935; background: #ffeaea; }
 
+  /* Mobiili / pienempi korkeus: scroll ja korttien vapautus */
   @media (max-width: 1024px), (max-height: 900px) {
     html, body { overflow: auto; }
-    .events-list { overflow-y: auto; }
-    .event-card { flex: 0 0 auto; }
+    .events-list { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .event-card { flex: 0 0 auto; padding: 12px 14px; }
+    .event-date { font-size: 1.05rem; }
+    .event-title { font-size: 1.2rem; }
+    .event-description { -webkit-line-clamp: 3; font-size: 1rem; }
+    .warn-body { grid-template-columns: 1fr; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   }
 </style>
 </head>
@@ -131,7 +147,7 @@
   </div>
 </section>
 
-<!-- SLIDE 2: Foreca päivittäinen -->
+<!-- SLIDE 2: Foreca – Päivittäinen -->
 <section class="slide" id="slide-foreca">
   <div class="foreca-holder">
     <div id="foreca-daily-weather-TDuVRzzeNw"
@@ -143,12 +159,22 @@
       data-tempunit="C"
       data-rainunit="mm"
       data-language="fi">
-      <script defer data-cfasync="false" type="text/javascript" src="https://www.forecabox.com/dist/daily.min.js" onload="loadDaily('TDuVRzzeNw')"></script>
+      <script defer data-cfasync="false" type="text/javascript"
+        src="https://www.forecabox.com/dist/daily.min.js"
+        onload="loadDaily('TDuVRzzeNw')"></script>
+      <!-- Foreca attribution ohjeen mukaan -->
+      <a id="foreca-attribution-TDuVRzzeNw" href="https://www.foreca.com/"
+         rel="noopener" target="_blank"
+         style="position:absolute;bottom:10px;left:10px;">
+        <img alt="Weather by Foreca"
+             src="https://www.foreca.com/public/images/logo/black.svg"
+             width="100" height="25"/>
+      </a>
     </div>
   </div>
 </section>
 
-<!-- SLIDE 3: Foreca current -->
+<!-- SLIDE 3: Foreca – Current -->
 <section class="slide" id="slide-foreca-current">
   <div class="foreca-current">
     <div id="foreca-current-weather-OwCjwleDmy"
@@ -160,7 +186,16 @@
       data-tempunit="C"
       data-rainunit="mm"
       data-language="fi">
-      <script defer data-cfasync="false" type="text/javascript" src="https://www.forecabox.com/dist/current.min.js" onload="loadCurrentConditions('OwCjwleDmy')"></script>
+      <script defer data-cfasync="false" type="text/javascript"
+        src="https://www.forecabox.com/dist/current.min.js"
+        onload="loadCurrentConditions('OwCjwleDmy')"></script>
+      <a id="foreca-attribution-OwCjwleDmy" href="https://www.foreca.com/"
+         rel="noopener" target="_blank"
+         style="position:absolute;bottom:10px;left:10px;">
+        <img alt="Weather by Foreca"
+             src="https://www.foreca.com/public/images/logo/black.svg"
+             width="100" height="25"/>
+      </a>
     </div>
   </div>
 </section>
@@ -175,23 +210,236 @@
   </div>
 </section>
 
+<!-- ical parser -->
 <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
+/* ===== ASETUKSET ===== */
 const SWITCH_MS = 20000;
+const IS_MOBILE = matchMedia('(max-width: 1024px)').matches || matchMedia('(max-height: 900px)').matches;
+const SHOW_LIMIT = IS_MOBILE ? 20 : 5;
+
+/* Cloudflare Worker -proxy iCalille (vaihda omaan, jos eri) */
+const PROXY = 'https://vpk.mijuze1.workers.dev/?url=';
+const ICS_URL = () => PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical') + '&_=' + Date.now();
+
+/* Nurmijärvi varoituksia varten */
+const LAT = 60.4646, LON = 24.8071;
+
+/* ===== APURI ===== */
+function cleanTitle(title) {
+  if (!title) return '';
+  const m = title.match(/(?:–|:)\s*(.+)$/);
+  if (m && m[1]) return m[1].trim();
+  return title.replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '').trim();
+}
+function getDateColor(summary) {
+  const t = (summary || '').toLowerCase();
+  if (t.includes('auto')) return '#fc832f';
+  if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f';
+  if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638';
+  if (t.includes('päätös')) return '#fcd854';
+  if (t.includes('kokous')) return '#fcd854';
+  if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638';
+  if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638';
+  if (t.includes('juhla')) return '#7ab638';
+  return '#2178a1';
+}
+function stripLinks(html) {
+  if (!html) return '';
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  div.querySelectorAll('a').forEach(a => a.remove());
+  return (div.textContent || div.innerText || '').replace(/https?:\/\/\S+/g, '').trim();
+}
+function formatEventDate(startDate, endDate, allDay=false) {
+  const s = new Date(startDate), e = new Date(endDate);
+  const sameDay = s.toDateString() === e.toDateString();
+  if (allDay) {
+    return sameDay ? s.toLocaleDateString('fi-FI')
+                   : `${s.toLocaleDateString('fi-FI')} – ${e.toLocaleDateString('fi-FI')}`;
+  } else if (sameDay) {
+    return `${s.toLocaleDateString('fi-FI')} klo ${s.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${e.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
+  } else {
+    return `${s.toLocaleDateString('fi-FI')} klo ${s.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${e.toLocaleDateString('fi-FI')} klo ${e.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
+  }
+}
+async function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 9000 } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(resource, { ...options, signal: controller.signal, cache: 'no-store', referrerPolicy: 'no-referrer' });
+    clearTimeout(id);
+    return response;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
+/* ===== TAPAHTUMAT (iCal) ===== */
+async function loadICS(url) {
+  try {
+    const res = await fetchWithTimeout(url, { timeout: 9000 });
+    if (!res.ok) {
+      console.error('ICS fetch not OK:', res.status, res.statusText);
+      return { items: [], error: `ICS-palvelu vastasi: ${res.status}` };
+    }
+    const text = await res.text();
+    let events = [];
+    try {
+      const jcal = ICAL.parse(text);
+      const comp = new ICAL.Component(jcal);
+      const vevents = comp.getAllSubcomponents('vevent').map(ve => new ICAL.Event(ve));
+      const now = new Date();
+      events = vevents
+        .filter(ev => ev.endDate && ev.endDate.toJSDate() > now)
+        .map(ev => ({
+          summary: ev.summary || '',
+          description: ev.description || '',
+          startDate: ev.startDate.toJSDate(),
+          endDate: ev.endDate.toJSDate(),
+          allDay: ev.startDate.isDate && ev.endDate.isDate
+        }))
+        .sort((a,b) => a.startDate - b.startDate);
+    } catch (parseErr) {
+      console.error('ICAL parse error:', parseErr);
+      return { items: [], error: 'ICS-datan jäsentäminen epäonnistui' };
+    }
+    return { items: events };
+  } catch (err) {
+    console.error('ICS network error:', err);
+    return { items: [], error: (err.name === 'AbortError' ? 'Yhteyden aikakatkaisu' : 'Verkkovirhe') };
+  }
+}
+function renderEvents(containerId, payload) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  const { items, error } = payload;
+
+  if (error) {
+    container.innerHTML = `<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div><div class="event-description">${error}</div></div>`;
+    return;
+  }
+  if (!items || !items.length) {
+    container.innerHTML = '<div class="event-card"><div class="event-title">Ei tulevia tapahtumia</div></div>';
+    return;
+  }
+  items.slice(0, SHOW_LIMIT).forEach(item => {
+    const title = cleanTitle(item.summary);
+    const dateBg = getDateColor(item.summary);
+    const description = item.description ? stripLinks(item.description) : '';
+
+    const card = document.createElement('div');
+    card.className = 'event-card';
+
+    const dateEl = document.createElement('div');
+    dateEl.className = 'event-date';
+    dateEl.style.background = dateBg;
+    dateEl.textContent = formatEventDate(item.startDate, item.endDate, item.allDay);
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'event-title';
+    titleEl.textContent = title;
+
+    card.appendChild(dateEl);
+    card.appendChild(titleEl);
+
+    if (description) {
+      const descEl = document.createElement('div');
+      descEl.className = 'event-description';
+      descEl.textContent = description;
+      card.appendChild(descEl);
+    }
+
+    container.appendChild(card);
+  });
+}
+
+/* ===== VAROITUKSET (Open-Meteo/Meteoalarm) ===== */
+async function loadWarnings(lat, lon) {
+  try {
+    const url = `https://api.open-meteo.com/v1/warnings?latitude=${lat}&longitude=${lon}&timezone=auto&_=${Date.now()}`;
+    const res = await fetchWithTimeout(url, { timeout: 9000 });
+    if (!res.ok) throw new Error('Warn status '+res.status);
+    return await res.json();
+  } catch (e) {
+    console.error('Warnings error', e);
+    return null;
+  }
+}
+function severityClass(level){
+  if (level >= 3) return 'lvl-red';
+  if (level === 2) return 'lvl-orange';
+  if (level === 1) return 'lvl-yellow';
+  return '';
+}
+function renderWarnings(data){
+  const box = document.getElementById('warn-list');
+  box.innerHTML = '';
+  const items = data?.warnings || [];
+  if (!items.length){
+    box.innerHTML = '<div class="warn-empty">Ei voimassa olevia varoituksia</div>';
+    return;
+  }
+  items.slice(0,6).forEach(w => {
+    const cls = severityClass(w.severity);
+    const start = w.start ? new Date(w.start).toLocaleString('fi-FI') : '';
+    const end   = w.end ? new Date(w.end).toLocaleString('fi-FI') : '';
+    const div = document.createElement('div');
+    div.className = `warn-box ${cls}`;
+    div.innerHTML = `
+      <div class="w-title">${w.event || 'Varoitus'}</div>
+      <div class="w-when">${start}${end ? ' – ' + end : ''}</div>
+      ${w.description ? `<div class="w-desc">${w.description}</div>` : ''}
+    `;
+    box.appendChild(div);
+  });
+}
+
+/* ===== SLIDE KIERRÄTYS ===== */
 const slides = [ 'slide-events', 'slide-foreca', 'slide-foreca-current', 'slide-warnings' ];
 let currentSlide = 0;
 function showSlide(i){ slides.forEach((id,idx)=>document.getElementById(id).classList.toggle('active', idx===i)); }
-setInterval(()=>{ currentSlide=(currentSlide+1)%slides.length; showSlide(currentSlide); },SWITCH_MS);
+function startCarousel(){
+  setInterval(()=>{ currentSlide=(currentSlide+1)%slides.length; showSlide(currentSlide); }, SWITCH_MS);
+}
 
-// Kello
+/* ===== KELLO ===== */
 function updateClock(){
   const now = new Date();
   document.getElementById('clock').textContent =
     now.toLocaleDateString('fi-FI',{weekday:'long', day:'numeric', month:'long'}) +
     " " + now.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'});
 }
-setInterval(updateClock,1000);updateClock();
-</script>
+setInterval(updateClock,1000); updateClock();
 
+/* ===== INIT ===== */
+async function init(){
+  // Tapahtumat (iCal)
+  const events = await loadICS(ICS_URL());
+  renderEvents('miehisto-events', events);
+
+  // Varoitukset
+  const warns = await loadWarnings(LAT, LON);
+  renderWarnings(warns);
+
+  // Näytä 1. slide ja käynnistä kierto
+  showSlide(0);
+  startCarousel();
+
+  // Päivitykset: tapahtumat 5 min välein, varoitukset 10 min välein
+  setInterval(async () => {
+    const e = await loadICS(ICS_URL());
+    renderEvents('miehisto-events', e);
+  }, 5*60*1000);
+
+  setInterval(async () => {
+    const w = await loadWarnings(LAT, LON);
+    renderWarnings(w);
+  }, 10*60*1000);
+}
+init();
+</script>
 </body>
 </html>
