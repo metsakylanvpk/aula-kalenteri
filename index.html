@@ -2,7 +2,7 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8" />
-<title>Aulan näyttö – Tapahtumat • Sää (FMI) • Varoitukset • Liikenne</title>
+<title>Aulan näyttö – Tapahtumat • Sää (FMI) • Varoitukset + Liikenne</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
   :root{
@@ -55,9 +55,16 @@
   .fc-temp{font-size:1.2rem;font-weight:900}
   .fc-sub{font-size:.95rem;color:#333;margin-top:4px}
 
-  /* ======= VAROITUKSET (FMI CAP) ======= */
-  .warn .slide-header{background:#2b3648}
-  .warn-list{display:grid;gap:10px;max-width:1200px;margin:0 auto}
+  /* ======= VAROITUKSET + LIIKENNE ======= */
+  .alerts .slide-header{background:#2b3648}
+  .two-col{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:16px}
+  .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
+  .panel-h{height:52px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px}
+  .panel-b{background:#f2f6fa;padding:12px}
+  .warn .panel-h{background:#374151}
+  .traffic .panel-h{background:#6d28d9}
+
+  .warn-list{display:grid;gap:10px}
   .warn-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;grid-template-columns:28px 1fr;gap:10px}
   .warn-icon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900}
   .warn-content{display:grid;gap:4px}
@@ -68,9 +75,7 @@
   .lvl-orange .warn-icon{background:#ff9800}
   .lvl-red    .warn-icon{background:#e53935}
 
-  /* ======= LIIKENNE (Digitraffic) ======= */
-  .traffic .slide-header{background:#8b5cf6}
-  .traffic-list{display:grid;gap:10px;max-width:1200px;margin:0 auto}
+  .traffic-list{display:grid;gap:10px}
   .traffic-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
   .t-title{font-weight:800;margin-bottom:4px}
   .t-meta{font-size:.95rem;color:#444}
@@ -113,22 +118,19 @@
     </div>
   </section>
 
-  <!-- 3) VAROITUKSET (FMI CAP) -->
-  <section class="slide warn" id="slide-warn" aria-label="Viranomaisten varoitukset">
-    <div class="slide-header">Viranomaisten varoitukset – FMI</div>
+  <!-- 3) VAROITUKSET + LIIKENNE samalle sivulle -->
+  <section class="slide alerts" id="slide-alerts" aria-label="Varoitukset ja liikennetiedotteet">
+    <div class="slide-header">Viranomaisten varoitukset (FMI) & Liikennetiedotteet (PK-seutu / Keski-Uusimaa)</div>
     <div class="slide-body">
-      <div id="warn-list" class="warn-list">
-        <div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 4) LIIKENNETIEDOTTEET -->
-  <section class="slide traffic" id="slide-traffic" aria-label="Liikennetiedotteet">
-    <div class="slide-header">Liikennetiedotteet – Digitraffic</div>
-    <div class="slide-body">
-      <div id="traffic-list" class="traffic-list">
-        <div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>
+      <div class="two-col">
+        <div class="panel warn">
+          <div class="panel-h">FMI – varoitukset</div>
+          <div class="panel-b"><div id="warn-list" class="warn-list"><div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div></div></div>
+        </div>
+        <div class="panel traffic">
+          <div class="panel-h">Digitraffic – liikennetiedotteet</div>
+          <div class="panel-b"><div id="traffic-list" class="traffic-list"><div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div></div></div>
+        </div>
       </div>
     </div>
   </section>
@@ -139,7 +141,7 @@
 <script>
 /* ===================== YLEISET ===================== */
 const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // vaihda jos eri
-const SLIDES = ['slide-events','slide-weather','slide-warn','slide-traffic'];
+const SLIDES = ['slide-events','slide-weather','slide-alerts'];
 let   slideIndex = 0;
 
 /* Kello */
@@ -250,12 +252,9 @@ function renderEvents(containerId, payload) {
   });
 }
 
-/* ===================== 2) SÄÄ (FMI WFS – HARMONIE) ===================== */
+/* ===================== 2) SÄÄ (FMI WFS – HARMONIE, TVP) ===================== */
 const KL = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 };
-/* FMI WFS: forecast::harmonie::surface::point::simple
-   parametrit: temperature, windSpeedMS, WeatherSymbol3, precipitation1h */
 function wxEmoji(symbol){
-  /* WeatherSymbol3 → suuntaa-antava ikonointi */
   const s = Number(symbol);
   if ([1].includes(s)) return '☀️';
   if ([2,21,22].includes(s)) return '🌤️';
@@ -266,60 +265,30 @@ function wxEmoji(symbol){
   if ([15,16,17,18,19,20].includes(s)) return '⛈️';
   return '🌡️';
 }
-function parseFmiSimple(xmlText){
-  /* Yritetään “simple point” -vastetta: rivit joissa <Time> ja per parametri <ParameterName>/<ParameterValue>
-     Muodostetaan aikaleimoittain olio: { time: Date, T, WS, RR, SYM } */
+/* MeasurementTimeseries parser (TVP) */
+function parseFmiTVP(xmlText){
   const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
-  // Etsitään kaikki TimeValuePairit ja/tai om:result sisällä olevat rivit
-  const pairs = Array.from(doc.getElementsByTagNameNS('*','TimeValuePair'));
-  if (!pairs.length){
-    // fallback: etsi generic <wml2:MeasurementTimeseries>
-    const vals = Array.from(doc.getElementsByTagNameNS('*','MeasurementTVP'));
-    if (!vals.length) return [];
-    // Tarvitaan parametrin nimi → noudetaan sarjat
-    const series = Array.from(doc.getElementsByTagNameNS('*','MeasurementTimeseries'));
-    const outMap = new Map();
-    series.forEach(ts=>{
-      const pName = ts.getAttribute('gml:id') || '';
-      const param =
-        /temperature/i.test(pName) ? 'T' :
-        /windspeedms/i.test(pName) ? 'WS' :
-        /precipitation1h/i.test(pName) ? 'RR' :
-        /weathersymbol3/i.test(pName) ? 'SYM' : null;
-      if (!param) return;
-      const tvps = Array.from(ts.getElementsByTagNameNS('*','MeasurementTVP'));
-      tvps.forEach(tvp=>{
-        const t = tvp.getElementsByTagNameNS('*','time')[0]?.textContent;
-        const v = tvp.getElementsByTagNameNS('*','value')[0]?.textContent;
-        if (!t || v==null) return;
-        const key = new Date(t).toISOString();
-        if (!outMap.has(key)) outMap.set(key, { time:new Date(t) });
-        const rec = outMap.get(key);
-        if (param==='T') rec.T = Number(v);
-        if (param==='WS') rec.WS = Number(v);
-        if (param==='RR') rec.RR = Number(v);
-        if (param==='SYM') rec.SYM = Number(v);
-      });
-    });
-    return Array.from(outMap.values()).sort((a,b)=>a.time-b.time);
-  } else {
-    // “simple” rakenne: jokaisessa parissa on ParameterName/Value + Time
-    const outMap = new Map();
-    pairs.forEach(p=>{
-      const name = p.getElementsByTagNameNS('*','ParameterName')[0]?.textContent || '';
-      const val  = p.getElementsByTagNameNS('*','ParameterValue')[0]?.textContent ?? null;
-      const time = p.getElementsByTagNameNS('*','Time')[0]?.textContent || '';
+  const series = Array.from(doc.getElementsByTagNameNS('*','MeasurementTimeseries'));
+  const outMap = new Map();
+  series.forEach(ts=>{
+    const id = (ts.getAttribute('gml:id')||'').toLowerCase();
+    const key =
+      id.includes('temperature')      ? 'T'  :
+      id.includes('windspeedms')      ? 'WS' :
+      id.includes('precipitation1h')  ? 'RR' :
+      id.includes('weathersymbol3')   ? 'SYM': null;
+    if (!key) return;
+    Array.from(ts.getElementsByTagNameNS('*','MeasurementTVP')).forEach(tvp=>{
+      const time = tvp.getElementsByTagNameNS('*','time')[0]?.textContent;
+      const val  = tvp.getElementsByTagNameNS('*','value')[0]?.textContent;
       if (!time || val==null) return;
-      const key = new Date(time).toISOString();
-      if (!outMap.has(key)) outMap.set(key, { time:new Date(time) });
-      const rec = outMap.get(key);
-      if (/^temperature$/i.test(name)) rec.T = Number(val);
-      else if (/^windspeedms$/i.test(name) || /^windspeedms$/i.test(name)) rec.WS = Number(val);
-      else if (/^precipitation1h$/i.test(name)) rec.RR = Number(val);
-      else if (/^weathersymbol3$/i.test(name)) rec.SYM = Number(val);
+      const iso = new Date(time).toISOString();
+      if (!outMap.has(iso)) outMap.set(iso, { time:new Date(time) });
+      const rec = outMap.get(iso);
+      rec[key] = Number(val);
     });
-    return Array.from(outMap.values()).sort((a,b)=>a.time-b.time);
-  }
+  });
+  return Array.from(outMap.values()).sort((a,b)=>a.time-b.time);
 }
 async function loadFmiWeather(){
   const card = document.getElementById('wx-card');
@@ -331,32 +300,33 @@ async function loadFmiWeather(){
 
   try{
     const base = 'https://opendata.fmi.fi/wfs';
+    const now  = new Date();
+    const end  = new Date(now.getTime() + 9*60*60*1000); // +9h
     const params = new URLSearchParams({
       service:'WFS',
       version:'2.0.0',
-      request:'getFeature',
-      storedquery_id:'fmi::forecast::harmonie::surface::point::simple',
-      // latlon "lat,lon" – FMI hyväksyy tässä järjestyksessä
+      request:'GetFeature',
+      storedquery_id:'fmi::forecast::harmonie::surface::point::timevaluepair',
       latlon:`${KL.lat},${KL.lon}`,
-      parameters:'temperature,windSpeedMS,WeatherSymbol3,precipitation1h'
+      parameters:'temperature,windSpeedMS,WeatherSymbol3,precipitation1h',
+      starttime: now.toISOString(),
+      endtime:   end.toISOString(),
+      timestep:  '60'
     });
     const url = PROXY + encodeURIComponent(`${base}?${params.toString()}`) + '&_=' + Date.now();
-    const r = await fetchWithTimeout(url, 12000);
+    const r = await fetchWithTimeout(url, 15000);
     if (!r.ok) throw new Error('FMI ' + r.status);
     const xml = await r.text();
-    const rows = parseFmiSimple(xml);
+    const rows = parseFmiTVP(xml);
     if (!rows.length) throw new Error('FMI: tyhjä vastaus');
 
-    // Nykyhetki = lähin aikaleima
-    const now = Date.now();
+    // Lähin nykyhetkeen
+    const nowMs = Date.now();
     let current = rows.reduce((best,rec)=>{
-      const d = Math.abs(rec.time - now);
+      const d = Math.abs(rec.time - nowMs);
       return (best==null || d < best.d) ? { rec, d } : best;
-    }, null)?.rec;
+    }, null)?.rec || rows[0];
 
-    if (!current) current = rows[0];
-
-    // Renderöi pääkortti
     const temp = isFinite(current.T)? Math.round(current.T) : '–';
     const wind = isFinite(current.WS)? Math.round(current.WS) : '–';
     const rain = isFinite(current.RR)? current.RR.toFixed(1) : '–';
@@ -389,8 +359,8 @@ async function loadFmiWeather(){
   }
 }
 
-/* ===================== 3) FMI VAROITUKSET (CAP RSS) ===================== */
-const FMI_RSS_FI = 'https://alerts.fmi.fi/cap/feed/rss_fi-FI.rss'; // avoin feed
+/* ===================== 3) VAROITUKSET (FMI CAP RSS) ===================== */
+const FMI_RSS_FI = 'https://alerts.fmi.fi/cap/feed/rss_fi-FI.rss';
 function sevClassFromText(txt){
   const t=(txt||'').toLowerCase();
   if (t.includes('punainen')||t.includes('red')) return 'lvl-red';
@@ -412,7 +382,7 @@ async function loadWarnings(){
   const list = document.getElementById('warn-list');
   list.innerHTML = '<div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div>';
   try{
-    const url = PROXY + encodeURIComponent(FMI_RSS_FI) + '&_=' + Date.now(); // proxyllä vältetään CORS
+    const url = PROXY + encodeURIComponent(FMI_RSS_FI) + '&_=' + Date.now();
     const r = await fetchWithTimeout(url, 12000); if(!r.ok) throw new Error('FMI '+r.status);
     const xml = await r.text();
     const doc = new DOMParser().parseFromString(xml, 'text/xml');
@@ -447,7 +417,32 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== 4) DIGITRAFFIC (CORS → proxy) ===================== */
+/* ===================== 4) DIGITRAFFIC (PK-seutu/Keski-Uusimaa) ===================== */
+const REGION_NAMES = ['Helsinki','Vantaa','Espoo','Kauniainen','Nurmijärvi','Hyvinkää','Järvenpää','Tuusula','Kerava','Sipoo','Kirkkonummi','Vihti','Klaukkala','Uusimaa','Pääkaupunkiseutu','Keski-Uusimaa'];
+// Karkea bbox PK-seutu + Keski-Uusimaa (lat,lon)
+const BBOX = { minLat:60.1, maxLat:60.6, minLon:24.2, maxLon:25.4 };
+
+function inRegionByName(m){
+  const join = (txt)=> (txt||'').toString().toLowerCase();
+  const blob = join(m.title)+' '+join(m.announcement)+' '+join(m.location)+' '+join(m.roadAddressRegion)+' '+join(m.municipality);
+  return REGION_NAMES.some(w=>blob.includes(w.toLowerCase()));
+}
+function inRegionByCoord(m){
+  const lat = m?.latitude ?? m?.lat ?? m?.location?.lat ?? m?.roadAddress?.lat;
+  const lon = m?.longitude ?? m?.lon ?? m?.location?.lon ?? m?.roadAddress?.lon;
+  if (!isFinite(lat) || !isFinite(lon)) return false;
+  return lat>=BBOX.minLat && lat<=BBOX.maxLat && lon>=BBOX.minLon && lon<=BBOX.maxLon;
+}
+function materializeTrafficItem(m){
+  const title = m.title || m.announcement || m.eventType || 'Liikennetiedote';
+  const time  = m.releaseTime || m.publicationTime || m.eventTime || m.lastUpdated || m.validFrom || '';
+  const when  = time ? new Date(time).toLocaleString('fi-FI') : '';
+  const region= m.roadAddressRegion || m.location || m.municipality || '';
+  const road  = m.roadNumber ? `VT ${m.roadNumber}` : (m.road?.number ? `VT ${m.road.number}` : (m.road ? `VT ${m.road}` : ''));
+  const desc  = m.description || m.cause || m.shortDescription || m.category || '';
+  const where = [region, road].filter(Boolean).join(' • ');
+  return { title, when, desc, where };
+}
 async function loadTraffic(){
   const box = document.getElementById('traffic-list');
   box.innerHTML = '<div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>';
@@ -457,21 +452,22 @@ async function loadTraffic(){
     if(!r.ok) throw new Error('traffic '+r.status);
     const data = await r.json();
 
-    let msgs = data?.trafficMessages || data?.features || data?.messages || [];
-    if (Array.isArray(data?.features)) msgs = data.features.map(f => f.properties || f);
+    // Yritä useita muotoja
+    let msgs = data?.trafficMessages || data?.messages || [];
+    if (!Array.isArray(msgs) && Array.isArray(data?.features)) {
+      msgs = data.features.map(f => ({...f.properties, latitude: f.geometry?.coordinates?.[1], longitude: f.geometry?.coordinates?.[0]}));
+    }
 
-    const html = msgs.slice(0, 14).map(m=>{
-      const title = m.title || m.announcement || 'Liikennetiedote';
-      const time  = m?.releaseTime || m?.publicationTime || m?.eventTime || m?.lastUpdated || '';
-      const when  = time ? new Date(time).toLocaleString('fi-FI') : '';
-      const desc  = m?.description || m?.cause || '';
-      const region= m?.roadAddressRegion || m?.location || '';
-      const road  = m?.roadNumber ? `VT ${m.roadNumber}` : (m?.road?.number ? `VT ${m.road.number}` : '');
-      const where = [region, road].filter(Boolean).join(' • ');
+    // Suodata alueelle
+    let list = msgs.filter(m => inRegionByName(m) || inRegionByCoord(m));
+    if (list.length < 8) list = msgs; // fallback jos data on niukkaa
+
+    const html = list.slice(0, 16).map(m=>{
+      const it = materializeTrafficItem(m);
       return `<div class="traffic-item">
-        <div class="t-title">${title}</div>
-        <div class="t-meta">${where || 'Alue tuntematon'}${when ? ' • '+when : ''}</div>
-        ${desc ? `<div class="t-desc">${desc}</div>` : ''}
+        <div class="t-title">${it.title}</div>
+        <div class="t-meta">${it.where || 'PK-seutu / Keski-Uusimaa'}${it.when ? ' • '+it.when : ''}</div>
+        ${it.desc ? `<div class="t-desc">${it.desc}</div>` : ''}
       </div>`;
     }).join('');
     box.innerHTML = html || '<div class="traffic-item"><div class="t-title">Ei ajankohtaisia tiedotteita</div></div>';
