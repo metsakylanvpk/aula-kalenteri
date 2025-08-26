@@ -2,98 +2,95 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8" />
-<title>Aulan näyttö – Tapahtumat • Sää (FMI) • Varoitukset + Liikenne</title>
-<title>Aulan näyttö – Tapahtumat • Sää + Varoitukset + Liikenne</title>
+<title>Aulan näyttö – Miehistö • Sää • Varoitukset • Liikenne</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
   :root{
     --gap: 16px;
     --panel-pad: 16px;
     --header-h: 64px;
-    --accent: #007b83;
-    --slide-time-ms: 20000; /* 20 s / näkymä */
+    --accent: #007b83;         /* Tapahtumat-otsikko */
+    --slide-time-ms: 20000;    /* 20 s per näkymä */
   }
-  html,body{margin:0;height:100vh;width:100vw;background:#e9eef3;color:#111;font-family:"Segoe UI",Tahoma,Verdana,sans-serif;overflow:hidden}
-  #clock{position:fixed;top:10px;right:16px;font-size:1.25rem;font-weight:700;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:8px;z-index:10}
+  html,body{
+    margin:0;height:100vh;width:100vw;background:#e9eef3;color:#111;
+    font-family:"Segoe UI",Tahoma,Verdana,sans-serif;overflow:hidden
+  }
+  #clock{
+    position:fixed;top:10px;right:16px;font-size:1.1rem;font-weight:700;
+    background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:8px;z-index:10
+  }
 
   /* SLIDES */
   .slides{height:100%;width:100%;position:relative}
   .slide{
     position:absolute;inset:0;background:#fff;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.15);
-    display:grid;grid-template-rows:var(--header-h) 1fr;overflow:hidden;opacity:0;pointer-events:none;transform:scale(.98);
-    transition:opacity .4s ease, transform .4s ease;
-    margin: var(--gap);
+    display:grid;grid-template-rows:var(--header-h) 1fr;overflow:hidden;opacity:0;pointer-events:none;transform:scale(.985);
+    transition:opacity .35s ease, transform .35s ease;margin:var(--gap);
   }
   .slide.active{opacity:1;pointer-events:auto;transform:scale(1)}
-  .slide-header{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.5rem;color:#fff;background:var(--accent)}
+  .slide-header{
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.5rem;color:#fff;background:var(--accent)
+  }
   .slide-body{background:#f2f6fa;padding:var(--panel-pad);overflow:auto;-webkit-overflow-scrolling:touch}
 
   /* ======= TAPAHTUMAT ======= */
   .events .slide-header{background:#007b83}
   .events-list{display:grid;gap:12px}
-  .event-card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);padding:12px 14px}
-  .event-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.2)}
-  .event-date{font-weight:800;color:#fff;border-radius:8px;display:inline-block;padding:5px 10px;margin-bottom:8px}
-  .event-title{font-weight:800;font-size:1.2rem;word-break:break-word}
-  .event-description{margin-top:6px;color:#333}
-
-  /* ======= SÄÄ (FMI) ======= */
-  .weather .slide-header{background:#2563eb}
-  .wx-wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-rows:auto auto;gap:14px}
-  .weather-card{
+  .event-card{
     background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);
-    padding:18px 20px;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:12px
-  /* ======= SÄÄ + VAROITUKSET + LIIKENNE (SAMALLA SIVULLA) ======= */
-  .wx-alerts .slide-header{background:#2563eb}
+    padding:12px 14px
+  }
+  .event-date{
+    font-weight:800;color:#fff;border-radius:8px;display:inline-block;padding:5px 10px;margin-bottom:6px
+  }
+  .event-title{font-weight:800;font-size:1.18rem;word-break:break-word}
+  .event-description{margin-top:6px;color:#333;font-size:1.02rem}
+
+  /* 1920×1080: ~5 korttia ilman scrollia */
+  @media (min-width: 1600px){
+    .events-list{grid-auto-rows:minmax(0,1fr)}
+    .event-card{padding:14px 16px}
+    .event-title{font-size:1.22rem}
+  }
+
+  /* ======= SÄÄ + VAROITUKSET + LIIKENNE ======= */
+  .wx-alerts .slide-header{background:#334155} /* neutraali */
   .wx-grid{
     max-width:1350px;margin:0 auto;display:grid;gap:16px;
-    grid-template-columns:1.2fr 1fr; grid-template-rows:auto auto;
+    grid-template-columns:1fr;
     grid-template-areas:
-      "wx warn"
-      "fc traffic";
+      "wx"
+      "fc"
+      "warn"
+      "traffic";
   }
-  .w-city{font-size:1.3rem;font-weight:900}
-  .w-temp{font-size:2.6rem;font-weight:900}
   .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
-  .panel-h{height:52px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px}
+  .panel-h{height:52px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px;background:#334155}
   .panel-b{background:#f2f6fa;padding:12px}
 
   .p-wx   {grid-area: wx}
-  .p-wx .panel-h{background:#1d4ed8}
   .p-fc   {grid-area: fc}
-  .p-fc .panel-h{background:#3b82f6}
   .p-warn {grid-area: warn}
-  .p-warn .panel-h{background:#374151}
   .p-traf {grid-area: traffic}
-  .p-traf .panel-h{background:#6d28d9}
+  .p-traf .panel-h{background:#4b5563}
 
   /* Sääkortti */
   .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:12px}
   .w-city{font-size:1.2rem;font-weight:900}
-  .w-temp{font-size:2.4rem;font-weight:900}
+  .w-temp{font-size:2.3rem;font-weight:900}
   .w-row{grid-column:1/-1;display:flex;gap:12px;flex-wrap:wrap}
   .w-badge{background:#eef3f8;border-radius:8px;padding:6px 10px}
-  .w-icon{font-size:2rem;margin-left:8px}
-  .w-icon{font-size:1.8rem;margin-left:8px}
+  .w-icon{font-size:1.6rem;margin-left:6px}
   .muted{opacity:.7}
 
   /* Ennuste */
   .forecast{display:grid;gap:10px;grid-template-columns:repeat(6,1fr)}
   .fc-item{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 6px rgba(0,0,0,.12);text-align:center}
   .fc-time{font-weight:800;margin-bottom:6px}
-  .fc-temp{font-size:1.2rem;font-weight:900}
+  .fc-temp{font-size:1.15rem;font-weight:900}
   .fc-sub{font-size:.95rem;color:#333;margin-top:4px}
 
-  /* ======= VAROITUKSET + LIIKENNE ======= */
-  .alerts .slide-header{background:#2b3648}
-  .two-col{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:16px}
-  .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
-  .panel-h{height:52px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px}
-  .panel-b{background:#f2f6fa;padding:12px}
-  .warn .panel-h{background:#374151}
-  .traffic .panel-h{background:#6d28d9}
-
-  .warn-list{display:grid;gap:10px}
   /* Varoitukset */
   .warn-list{display:grid;gap:10px;max-height:360px;overflow:auto}
   .warn-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;grid-template-columns:28px 1fr;gap:10px}
@@ -106,27 +103,12 @@
   .lvl-orange .warn-icon{background:#ff9800}
   .lvl-red    .warn-icon{background:#e53935}
 
-  .traffic-list{display:grid;gap:10px}
   /* Liikenne */
   .traffic-list{display:grid;gap:10px;max-height:360px;overflow:auto}
   .traffic-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
   .t-title{font-weight:800;margin-bottom:4px}
   .t-meta{font-size:.95rem;color:#444}
   .t-desc{margin-top:6px;color:#333}
-
-  @media (max-width: 1100px){
-    .event-title{font-size:1.1rem}
-    .w-temp{font-size:2.2rem}
-    .forecast{grid-template-columns:repeat(3,1fr)}
-  @media (max-width: 1200px){
-    .wx-grid{
-      grid-template-columns:1fr;grid-template-areas:
-        "wx"
-        "warn"
-        "fc"
-        "traffic";
-    }
-  }
 </style>
 </head>
 <body>
@@ -144,18 +126,10 @@
     </div>
   </section>
 
-  <!-- 2) SÄÄ (FMI – Klaukkalan Metsäkylä) -->
-  <section class="slide weather" id="slide-weather" aria-label="Sää – Klaukkalan Metsäkylä (FMI)">
-    <div class="slide-header">Sää – Klaukkalan Metsäkylä (FMI)</div>
-  <!-- 2) SÄÄ + VAROITUKSET + LIIKENNE (SAMALLA SIVULLA) -->
-  <section class="slide wx-alerts" id="slide-wx" aria-label="Sää & varoitukset & liikenne">
-    <div class="slide-header">Sää – Klaukkalan Metsäkylä • Varoitukset (FMI) • Liikennetiedotteet (PK-seutu / Keski-Uusimaa)</div>
+  <!-- 2) SÄÄ + VAROITUKSET + LIIKENNE -->
+  <section class="slide wx-alerts" id="slide-wx" aria-label="Sää, varoitukset ja liikenne">
+    <div class="slide-header">Sää – Klaukkalan Metsäkylä • Varoitukset (FMI) • Liikenne (PKS / Keski-Uusimaa)</div>
     <div class="slide-body">
-      <div class="wx-wrap">
-        <div id="wx-card" class="weather-card">
-          <div class="w-city">Klaukkalan Metsäkylä</div>
-          <div class="w-temp muted">…</div>
-          <div class="w-row"><span class="w-badge">Ladataan FMI-säätietoja…</span></div>
       <div class="wx-grid">
 
         <div class="panel p-wx">
@@ -168,27 +142,6 @@
             </div>
           </div>
         </div>
-        <div id="wx-forecast" class="forecast"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 3) VAROITUKSET + LIIKENNE samalle sivulle -->
-  <section class="slide alerts" id="slide-alerts" aria-label="Varoitukset ja liikennetiedotteet">
-    <div class="slide-header">Viranomaisten varoitukset (FMI) & Liikennetiedotteet (PK-seutu / Keski-Uusimaa)</div>
-    <div class="slide-body">
-      <div class="two-col">
-        <div class="panel warn">
-        <div class="panel p-warn">
-          <div class="panel-h">FMI – varoitukset</div>
-          <div class="panel-b"><div id="warn-list" class="warn-list"><div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div></div></div>
-          <div class="panel-b">
-            <div id="warn-list" class="warn-list">
-              <div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div>
-            </div>
-          </div>
-        </div>
-        <div class="panel traffic">
 
         <div class="panel p-fc">
           <div class="panel-h">FMI – seuraavat tunnit</div>
@@ -197,16 +150,23 @@
           </div>
         </div>
 
+        <div class="panel p-warn">
+          <div class="panel-h">FMI – varoitukset</div>
+          <div class="panel-b">
+            <div id="warn-list" class="warn-list">
+              <div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div>
+            </div>
+          </div>
+        </div>
+
         <div class="panel p-traf">
           <div class="panel-h">Digitraffic – liikennetiedotteet</div>
-          <div class="panel-b"><div id="traffic-list" class="traffic-list"><div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div></div></div>
           <div class="panel-b">
             <div id="traffic-list" class="traffic-list">
               <div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>
             </div>
           </div>
         </div>
-      </div>
 
       </div> <!-- .wx-grid -->
     </div>
@@ -217,13 +177,10 @@
 <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
 /* ===================== YLEISET ===================== */
-const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // vaihda jos eri
-const SLIDES = ['slide-events','slide-weather','slide-alerts'];
-const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← vaihda jos eri
+const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← vaihda omaan Worker-osoitteeseesi
 const SLIDES = ['slide-events','slide-wx'];
 let   slideIndex = 0;
 
-/* Kello */
 function tickClock(){
   const now = new Date();
   document.getElementById('clock').textContent =
@@ -232,7 +189,6 @@ function tickClock(){
 }
 setInterval(tickClock, 1000); tickClock();
 
-/* Vaihda näkyvää slidiä */
 function showSlide(i){
   SLIDES.forEach((id,idx)=>{
     const el = document.getElementById(id);
@@ -244,16 +200,13 @@ setInterval(()=>{
   showSlide(slideIndex);
 }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
 
-/* Timeout-apu */
-async function fetchWithTimeout(url, ms=12000){
 async function fetchWithTimeout(url, ms=12000, opts={}){
   const ctrl = new AbortController(); const id = setTimeout(()=>ctrl.abort(), ms);
-  try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store'}); clearTimeout(id); return r; }
   try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store', ...opts}); clearTimeout(id); return r; }
   catch(e){ clearTimeout(id); throw e; }
 }
 
-/* ===================== 1) TAPAHTUMAT (Nimenhuuto ICS) ===================== */
+/* ===================== TAPAHTUMAT (Nimenhuuto ICS) ===================== */
 const ICS_URL = () => PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical') + '&_=' + Date.now();
 
 function cleanTitle(title) {
@@ -310,7 +263,8 @@ async function loadICS(url) {
         endDate: ev.endDate.toJSDate(),
         allDay: ev.startDate.isDate && ev.endDate.isDate
       }))
-      .sort((a,b)=>a.startDate-b.startDate);
+      .sort((a,b)=>a.startDate-b.startDate)
+      .slice(0, 5);  // 1920×1080: näytetään 5 korttia
     return { items };
   } catch (e) {
     return { items: [], error: e.name === 'AbortError' ? 'Aikakatkaisu' : 'Verkkovirhe' };
@@ -333,8 +287,9 @@ function renderEvents(containerId, payload) {
   });
 }
 
-/* ===================== 2) SÄÄ (FMI WFS – HARMONIE, TVP) ===================== */
+/* ===================== SÄÄ (FMI WFS – HARMONIE/TVP) ===================== */
 const KL = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 };
+
 function wxEmoji(symbol){
   const s = Number(symbol);
   if ([1].includes(s)) return '☀️';
@@ -346,7 +301,6 @@ function wxEmoji(symbol){
   if ([15,16,17,18,19,20].includes(s)) return '⛈️';
   return '🌡️';
 }
-/* MeasurementTimeseries parser (TVP) */
 function parseFmiTVP(xmlText){
   const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
   const series = Array.from(doc.getElementsByTagNameNS('*','MeasurementTimeseries'));
@@ -440,7 +394,7 @@ async function loadFmiWeather(){
   }
 }
 
-/* ===================== 3) VAROITUKSET (FMI CAP RSS) ===================== */
+/* ===================== VAROITUKSET (FMI CAP RSS) ===================== */
 const FMI_RSS_FI = 'https://alerts.fmi.fi/cap/feed/rss_fi-FI.rss';
 function sevClassFromText(txt){
   const t=(txt||'').toLowerCase();
@@ -498,136 +452,76 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== 4) DIGITRAFFIC (PK-seutu/Keski-Uusimaa) ===================== */
-/* Vaihda tarvittaessa PROXY aiemmin määriteltyyn samaan muuttujaan */
+/* ===================== DIGITRAFFIC – Liikennetiedotteet ===================== */
 const REGION_NAMES = [
   'Helsinki','Vantaa','Espoo','Kauniainen','Nurmijärvi','Hyvinkää','Järvenpää','Tuusula',
   'Kerava','Sipoo','Kirkkonummi','Vihti','Klaukkala','Uusimaa','Pääkaupunkiseutu','Keski-Uusimaa'
 ];
-// karkea bbox PK-seutu + Keski-Uusimaa
-const BBOX = { minLat:60.1, maxLat:60.7, minLon:24.1, maxLon:25.6 };
-
-// apusuodattimet
-function inRegionByName(m){
-  const toL = (x)=> (x||'').toString().toLowerCase();
-  const blob = [m.title,m.announcement,m.location,m.roadAddressRegion,m.municipality,
-                m.roadAddressMunicipality,m.regionName].map(toL).join(' ');
-  return REGION_NAMES.some(w=> blob.includes(w.toLowerCase()));
-}
-function inRegionByCoord(m){
-  const lat = m?.latitude ?? m?.lat ?? m?.location?.lat ?? m?.roadAddress?.lat ?? m?.geometeryLat;
-  const lon = m?.longitude ?? m?.lon ?? m?.location?.lon ?? m?.roadAddress?.lon ?? m?.geometeryLon;
-  if (!isFinite(lat) || !isFinite(lon)) return false;
-  return lat>=BBOX.minLat && lat<=BBOX.maxLat && lon>=BBOX.minLon && lon<=BBOX.maxLon;
-}
-
-// nosta kentät yhtenäiseen muotoon
-function materializeTrafficItem(m){
-  const title = m.title || m.announcement || m.eventType || 'Liikennetiedote';
-  const time  = m.releaseTime || m.publicationTime || m.eventTime || m.lastUpdated || m.validFrom || '';
-  const when  = time ? new Date(time).toLocaleString('fi-FI') : '';
-  const region= m.roadAddressRegion || m.location || m.municipality || m.roadAddressMunicipality || '';
-  const roadNo= m.roadNumber || m?.road?.number || m.road;
-  const road  = roadNo ? `VT ${roadNo}` : '';
-  const desc  = m.description || m.cause || m.shortDescription || m.category || '';
-  const where = [region, road].filter(Boolean).join(' • ');
-  return { title, when, desc, where };
-}
-
-// kokeile useita endpointteja järjestyksessä
-async function fetchTrafficAny(){
-  const base = 'https://tie.digitraffic.fi/api/traffic-message/v1';
-  const endpoints = [
-    `${base}/messages?activeOnly=true&includeAreaGeometry=false`,
-    `${base}/messages?inactiveHours=0&includeAreaGeometry=false`,
-    `${base}/messages`, // fallback
-  ];
-  for (const api of endpoints){
-    const url = PROXY + encodeURIComponent(api) + '&_=' + Date.now();
-    const r = await fetchWithTimeout(url, 12000, {
-      headers: { 'Digitraffic-User': 'metsakylanvpk-aulanaytto/1.0', 'Accept':'application/json' }
-    });
-    // Jos proxy palauttaa HTML-sivun (virhe), älä yritä JSON.parse suoraan
-    const ct = r.headers.get('content-type') || '';
-    const text = await r.text();
-    if (!r.ok) continue;
-    if (!/application\/json/i.test(ct) && text.trim().startsWith('<')) continue;
-    try{
-      return JSON.parse(text);
-    }catch{ /* kokeile seuraavaa */ }
+function isInTargetArea(feature){
+  const names = [];
+  const anns = feature?.properties?.announcements || [];
+  for (const a of anns) {
+    const areas = a?.locationDetails?.areaLocation?.areas || [];
+    for (const ar of areas) if (ar?.name) names.push(ar.name.toLowerCase());
+    if (a?.title)   names.push(a.title.toLowerCase());
+    if (a?.comment) names.push(a.comment.toLowerCase());
   }
-  throw new Error('Ei kelvollista Digitraffic-vastausta');
+  const hay = names.join(' ');
+  return REGION_NAMES.some(n => hay.includes(n.toLowerCase()));
 }
-
+function toTrafficItem(feature){
+  const anns = feature?.properties?.announcements || [];
+  const a = anns[0] || {};
+  const title = a.title || feature?.properties?.title || 'Liikennetiedote';
+  const time  = a.releaseTime || a.publicationTime || feature?.properties?.publicationTime || '';
+  const when  = time ? new Date(time).toLocaleString('fi-FI') : '';
+  const region= (a?.locationDetails?.roadAddressLocation?.roadAddress?.municipality) ||
+                (a?.locationDetails?.areaLocation?.areas?.[0]?.name) || '';
+  const roadNo= a?.locationDetails?.roadAddressLocation?.roadAddress?.roadNumber;
+  const road  = roadNo ? `VT ${roadNo}` : '';
+  const where = [region, road].filter(Boolean).join(' • ');
+  const desc  = a.comment || a.description || feature?.properties?.description || '';
+  return { title, when, where, desc };
+}
 async function loadTraffic(){
   const box = document.getElementById('traffic-list');
+  if (!box) return;
   box.innerHTML = '<div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>';
   try{
-    // Uudempi, kevyt JSON (ilman area geometrioita). activeOnly=true -> turhat pois
-    const api = 'https://tie.digitraffic.fi/api/traffic-message/v1/messages?activeOnly=true&includeAreaGeometry=false';
+    const api = 'https://tie.digitraffic.fi/api/traffic-message/v1/messages?inactiveHours=0&includeAreaGeometry=false';
     const url = PROXY + encodeURIComponent(api) + '&_=' + Date.now();
+    const r = await fetchWithTimeout(url, 12000);
+    const text = await r.text();
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (text.trim().startsWith('<')) throw new Error('Proxy/HTML-virhe');
+    const data = JSON.parse(text);
+    const features = Array.isArray(data?.features) ? data.features : [];
+    let list = features.filter(isInTargetArea);
+    if (list.length < 1) list = features;
 
-    const r = await fetch(url, {
-      // Suositeltu tunniste (ohje: Digitraffic-User), proxy välittää sen eteenpäin
-      headers: { 'Digitraffic-User': 'metsakylanvpk-aulanaytto/1.0' },
-      cache: 'no-store'
-    });
-    if(!r.ok) throw new Error('traffic '+r.status);
-
-    const data = await r.json();
-
-    // Data voi tulla eri rakenteilla. Kokeillaan yleisimmät.
-    const data = await fetchTrafficAny();
-    let msgs = [];
-    if (Array.isArray(data)) {
-      msgs = data; // joissain vastauksissa lista suoraan
-      msgs = data;
-    } else if (Array.isArray(data?.trafficMessages)) {
-      msgs = data.trafficMessages;
-    } else if (Array.isArray(data?.messages)) {
-      msgs = data.messages;
-    } else if (Array.isArray(data?.features)) {
-      // GeoJSON: siirretään koordinaatit propertyihin
-      msgs = data.features.map(f => ({
-        ...f.properties,
-        latitude:  f.geometry?.coordinates?.[1],
-        longitude: f.geometry?.coordinates?.[0],
-      }));
-    }
-
-    // Suodata PK-seutu/Keski-Uusimaa; jos dataa jää liian vähän, näytä silti jotain
-    // Suodata PKS / Keski-Uusimaa – ja jos tyhjää, näytä silti jotain
-    let list = msgs.filter(m => inRegionByName(m) || inRegionByCoord(m));
-    if (list.length < 6) list = msgs; // fallback
-    if (list.length < 6) list = msgs;
-
-    const html = list.slice(0, 14).map(m=>{
-    const html = list.slice(0, 16).map(m=>{
-      const it = materializeTrafficItem(m);
+    const html = list.slice(0, 14).map(f=>{
+      const it = toTrafficItem(f);
       return `<div class="traffic-item">
         <div class="t-title">${it.title}</div>
         <div class="t-meta">${it.where || 'PK-seutu / Keski-Uusimaa'}${it.when ? ' • '+it.when : ''}</div>
         ${it.desc ? `<div class="t-desc">${it.desc}</div>` : ''}
       </div>`;
     }).join('');
-
     box.innerHTML = html || '<div class="traffic-item"><div class="t-title">Ei ajankohtaisia tiedotteita</div></div>';
   }catch(e){
-  }catch{
+    console.error('Digitraffic:', e);
     box.innerHTML = '<div class="traffic-item"><div class="t-title">Liikennetietoja ei voitu hakea</div></div>';
   }
 }
 
-
-
-/* ===================== INIT + PÄIVITYSSYKLI ===================== */
+/* ===================== INIT + PÄIVITYKSET ===================== */
 async function init(){
   const ev = await loadICS(ICS_URL());   renderEvents('miehisto-events', ev);
   await loadFmiWeather();
   await loadWarnings();
   await loadTraffic();
 
-  // Päivitykset
+  // Päivityssyklit
   setInterval(async ()=>{ const e=await loadICS(ICS_URL()); renderEvents('miehisto-events', e); }, 5*60*1000);
   setInterval(loadFmiWeather,  10*60*1000);
   setInterval(loadWarnings,    10*60*1000);
