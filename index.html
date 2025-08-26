@@ -54,7 +54,7 @@
     .event-title{font-size:1.22rem}
   }
 
-  /* ======= SÄÄ + VAROITUKSET + LIIKENNE ======= */
+  /* ======= SÄÄ + VAROITUKSET ======= */
   .wx-alerts .slide-header{background:#334155} /* neutraali */
   .wx-grid{
     max-width:1350px;margin:0 auto;display:grid;gap:16px;
@@ -62,8 +62,7 @@
     grid-template-areas:
       "wx"
       "fc"
-      "warn"
-      "traffic";
+      "warn";
   }
   .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
   .panel-h{height:52px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px;background:#334155}
@@ -72,8 +71,6 @@
   .p-wx   {grid-area: wx}
   .p-fc   {grid-area: fc}
   .p-warn {grid-area: warn}
-  .p-traf {grid-area: traffic}
-  .p-traf .panel-h{background:#4b5563}
 
   /* Sääkortti */
   .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:12px}
@@ -103,9 +100,10 @@
   .lvl-orange .warn-icon{background:#ff9800}
   .lvl-red    .warn-icon{background:#e53935}
 
-  /* Liikenne */
-  .traffic-list{display:grid;gap:10px;max-height:360px;overflow:auto}
-  .traffic-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  /* ======= LIIKENNE (oma sivu) ======= */
+  .traffic-only .slide-header{background:#4b5563}
+  .traffic-list{display:grid;gap:10px}
+  .traffic-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
   .t-title{font-weight:800;margin-bottom:4px}
   .t-meta{font-size:.95rem;color:#444}
   .t-desc{margin-top:6px;color:#333}
@@ -126,9 +124,9 @@
     </div>
   </section>
 
-  <!-- 2) SÄÄ + VAROITUKSET + LIIKENNE -->
-  <section class="slide wx-alerts" id="slide-wx" aria-label="Sää, varoitukset ja liikenne">
-    <div class="slide-header">Sää – Klaukkalan Metsäkylä • Varoitukset (FMI) • Liikenne (PKS / Keski-Uusimaa)</div>
+  <!-- 2) SÄÄ + VAROITUKSET -->
+  <section class="slide wx-alerts" id="slide-wx" aria-label="Sää ja varoitukset">
+    <div class="slide-header">Sää – Klaukkalan Metsäkylä • Varoitukset (FMI)</div>
     <div class="slide-body">
       <div class="wx-grid">
 
@@ -159,16 +157,17 @@
           </div>
         </div>
 
-        <div class="panel p-traf">
-          <div class="panel-h">Digitraffic – liikennetiedotteet</div>
-          <div class="panel-b">
-            <div id="traffic-list" class="traffic-list">
-              <div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>
-            </div>
-          </div>
-        </div>
-
       </div> <!-- .wx-grid -->
+    </div>
+  </section>
+
+  <!-- 3) LIIKENNE -->
+  <section class="slide traffic-only" id="slide-traffic" aria-label="Liikennetiedotteet">
+    <div class="slide-header">Liikennetiedotteet – PK-seutu / Keski-Uusimaa</div>
+    <div class="slide-body">
+      <div id="traffic-list" class="traffic-list">
+        <div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>
+      </div>
     </div>
   </section>
 </div>
@@ -178,7 +177,7 @@
 <script>
 /* ===================== YLEISET ===================== */
 const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← vaihda omaan Worker-osoitteeseesi
-const SLIDES = ['slide-events','slide-wx'];
+const SLIDES = ['slide-events','slide-wx','slide-traffic'];  // nyt 3 diaa
 let   slideIndex = 0;
 
 function tickClock(){
@@ -452,7 +451,7 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== DIGITRAFFIC – Liikennetiedotteet ===================== */
+/* ===================== DIGITRAFFIC – Liikennetiedotteet (oma sivu) ===================== */
 const REGION_NAMES = [
   'Helsinki','Vantaa','Espoo','Kauniainen','Nurmijärvi','Hyvinkää','Järvenpää','Tuusula',
   'Kerava','Sipoo','Kirkkonummi','Vihti','Klaukkala','Uusimaa','Pääkaupunkiseutu','Keski-Uusimaa'
@@ -469,12 +468,18 @@ function isInTargetArea(feature){
   const hay = names.join(' ');
   return REGION_NAMES.some(n => hay.includes(n.toLowerCase()));
 }
+// Poimi aikaleima ja muotoile
+function extractWhen(feature){
+  const anns = feature?.properties?.announcements || [];
+  const a = anns[0] || {};
+  const time  = a.releaseTime || a.publicationTime || feature?.properties?.publicationTime || feature?.properties?.releaseTime || '';
+  return time ? new Date(time).toLocaleString('fi-FI') : '';
+}
 function toTrafficItem(feature){
   const anns = feature?.properties?.announcements || [];
   const a = anns[0] || {};
   const title = a.title || feature?.properties?.title || 'Liikennetiedote';
-  const time  = a.releaseTime || a.publicationTime || feature?.properties?.publicationTime || '';
-  const when  = time ? new Date(time).toLocaleString('fi-FI') : '';
+  const when  = extractWhen(feature);
   const region= (a?.locationDetails?.roadAddressLocation?.roadAddress?.municipality) ||
                 (a?.locationDetails?.areaLocation?.areas?.[0]?.name) || '';
   const roadNo= a?.locationDetails?.roadAddressLocation?.roadAddress?.roadNumber;
@@ -499,7 +504,7 @@ async function loadTraffic(){
     let list = features.filter(isInTargetArea);
     if (list.length < 1) list = features;
 
-    const html = list.slice(0, 14).map(f=>{
+    const html = list.slice(0, 20).map(f=>{
       const it = toTrafficItem(f);
       return `<div class="traffic-item">
         <div class="t-title">${it.title}</div>
