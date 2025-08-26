@@ -54,10 +54,15 @@
     .event-title{font-size:1.22rem}
   }
 
-  /* ======= SÄÄ + VAROITUKSET ======= */
-  .wx-alerts .slide-header{background:#334155} /* neutraali */
+  /* ======= SÄÄ + VAROITUKSET (ILMAN SCROLLIA) ======= */
+  .wx-alerts .slide-header{background:#334155}
+  .wx-alerts .slide-body{overflow:hidden} /* tärkeä: ei scrolleja tällä dialla */
+
   .wx-grid{
-    max-width:1350px;margin:0 auto;display:grid;gap:16px;
+    height:calc(100% - 0px); /* täytä dianykyma */
+    max-width:1600px; margin:0 auto;
+    display:grid; gap:16px;
+    grid-template-rows:auto auto 1fr; /* sää, ennuste, varoitukset täyttää lopun */
     grid-template-columns:1fr;
     grid-template-areas:
       "wx"
@@ -65,7 +70,7 @@
       "warn";
   }
   .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
-  .panel-h{height:52px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px;background:#334155}
+  .panel-h{height:48px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px;background:#334155}
   .panel-b{background:#f2f6fa;padding:12px}
 
   .p-wx   {grid-area: wx}
@@ -73,23 +78,23 @@
   .p-warn {grid-area: warn}
 
   /* Sääkortti */
-  .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:12px}
+  .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:10px}
   .w-city{font-size:1.2rem;font-weight:900}
-  .w-temp{font-size:2.3rem;font-weight:900}
-  .w-row{grid-column:1/-1;display:flex;gap:12px;flex-wrap:wrap}
+  .w-temp{font-size:2.2rem;font-weight:900}
+  .w-row{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}
   .w-badge{background:#eef3f8;border-radius:8px;padding:6px 10px}
   .w-icon{font-size:1.6rem;margin-left:6px}
   .muted{opacity:.7}
 
-  /* Ennuste */
+  /* Ennuste (kompakti) */
   .forecast{display:grid;gap:10px;grid-template-columns:repeat(6,1fr)}
   .fc-item{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 6px rgba(0,0,0,.12);text-align:center}
-  .fc-time{font-weight:800;margin-bottom:6px}
-  .fc-temp{font-size:1.15rem;font-weight:900}
-  .fc-sub{font-size:.95rem;color:#333;margin-top:4px}
+  .fc-time{font-weight:800;margin-bottom:4px}
+  .fc-temp{font-size:1.05rem;font-weight:900}
+  .fc-sub{font-size:.92rem;color:#333;margin-top:2px}
 
-  /* Varoitukset */
-  .warn-list{display:grid;gap:10px;max-height:360px;overflow:auto}
+  /* Varoitukset – ei sisäscrollia, määrä rajattu JS:ssä */
+  .warn-list{display:grid;gap:10px}
   .warn-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;grid-template-columns:28px 1fr;gap:10px}
   .warn-icon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900}
   .warn-content{display:grid;gap:4px}
@@ -107,6 +112,10 @@
   .t-title{font-weight:800;margin-bottom:4px}
   .t-meta{font-size:.95rem;color:#444}
   .t-desc{margin-top:6px;color:#333}
+
+  /* Onnettomuudet korostettuina */
+  .traffic-item.accident .t-title{color:#c62828}
+  .traffic-item.accident .t-meta{color:#b71c1c}
 </style>
 </head>
 <body>
@@ -124,7 +133,7 @@
     </div>
   </section>
 
-  <!-- 2) SÄÄ + VAROITUKSET -->
+  <!-- 2) SÄÄ + VAROITUKSET (ilman scrollia) -->
   <section class="slide wx-alerts" id="slide-wx" aria-label="Sää ja varoitukset">
     <div class="slide-header">Sää – Klaukkalan Metsäkylä • Varoitukset (FMI)</div>
     <div class="slide-body">
@@ -177,7 +186,7 @@
 <script>
 /* ===================== YLEISET ===================== */
 const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← vaihda omaan Worker-osoitteeseesi
-const SLIDES = ['slide-events','slide-wx','slide-traffic'];  // nyt 3 diaa
+const SLIDES = ['slide-events','slide-wx','slide-traffic'];  // 3 diaa
 let   slideIndex = 0;
 
 function tickClock(){
@@ -375,7 +384,7 @@ async function loadFmiWeather(){
         <span class="w-badge">Klo ${current.time.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}</span>
       </div>`;
 
-    // Ennuste: seuraavat 6 tuntia
+    // Ennuste: seuraavat 6 tuntia (kompakti)
     const upcoming = rows.filter(r => r.time > current.time).slice(0,6);
     forecastBox.innerHTML = upcoming.map(r=>`
       <div class="fc-item">
@@ -429,8 +438,10 @@ async function loadWarnings(){
       return {title, desc, when, level};
     });
 
-    const ku = items.filter(x => /Nurmij|Keski-?Uusimaa|Hyvink|Järvenpää|Tuusula|Kerava|Mäntsälä|Pornainen|Klaukkala/i.test(x.title + ' ' + x.desc)).slice(0,10);
-    const fi = items.slice(0, 12);
+    // Näytä ilman scrolleja: KU max 5 + FI max 5
+    const kuAll = items.filter(x => /Nurmij|Keski-?Uusimaa|Hyvink|Järvenpää|Tuusula|Kerava|Mäntsälä|Pornainen|Klaukkala/i.test(x.title + ' ' + x.desc));
+    const ku = kuAll.slice(0,5);
+    const fi = items.slice(0,5);
 
     if (!ku.length && !fi.length){
       list.innerHTML = '<div class="warn-item"><div class="warn-content">Ei voimassa olevia varoituksia</div></div>';
@@ -468,6 +479,10 @@ function isInTargetArea(feature){
   const hay = names.join(' ');
   return REGION_NAMES.some(n => hay.includes(n.toLowerCase()));
 }
+function isAccidentFeature(feature){
+  const txt = JSON.stringify(feature?.properties || {}).toLowerCase();
+  return txt.includes('onnettomu') || txt.includes('kolari') || txt.includes('liikenneonnettomuus');
+}
 // Poimi aikaleima ja muotoile
 function extractWhen(feature){
   const anns = feature?.properties?.announcements || [];
@@ -486,7 +501,8 @@ function toTrafficItem(feature){
   const road  = roadNo ? `VT ${roadNo}` : '';
   const where = [region, road].filter(Boolean).join(' • ');
   const desc  = a.comment || a.description || feature?.properties?.description || '';
-  return { title, when, where, desc };
+  const accident = isAccidentFeature(feature);
+  return { title, when, where, desc, accident };
 }
 async function loadTraffic(){
   const box = document.getElementById('traffic-list');
@@ -506,7 +522,7 @@ async function loadTraffic(){
 
     const html = list.slice(0, 20).map(f=>{
       const it = toTrafficItem(f);
-      return `<div class="traffic-item">
+      return `<div class="traffic-item${it.accident ? ' accident' : ''}">
         <div class="t-title">${it.title}</div>
         <div class="t-meta">${it.where || 'PK-seutu / Keski-Uusimaa'}${it.when ? ' • '+it.when : ''}</div>
         ${it.desc ? `<div class="t-desc">${it.desc}</div>` : ''}
