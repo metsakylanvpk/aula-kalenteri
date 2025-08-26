@@ -2,7 +2,7 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8" />
-<title>Aulan näyttö – Tapahtumat • Sää • Varoitukset • Liikenne</title>
+<title>Aulan näyttö – Tapahtumat • Sää (FMI) • Varoitukset • Liikenne</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
   :root{
@@ -10,12 +10,12 @@
     --panel-pad: 16px;
     --header-h: 64px;
     --accent: #007b83;
-    --slide-time-ms: 20000; /* 20 s per näkymä */
+    --slide-time-ms: 20000; /* 20 s / näkymä */
   }
   html,body{margin:0;height:100vh;width:100vw;background:#e9eef3;color:#111;font-family:"Segoe UI",Tahoma,Verdana,sans-serif;overflow:hidden}
   #clock{position:fixed;top:10px;right:16px;font-size:1.25rem;font-weight:700;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:8px;z-index:10}
 
-  /* SLIDE-CONTTAINER (yksi näkyvissä kerrallaan) */
+  /* SLIDES */
   .slides{height:100%;width:100%;position:relative}
   .slide{
     position:absolute;inset:0;background:#fff;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.15);
@@ -27,7 +27,7 @@
   .slide-header{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.5rem;color:#fff;background:var(--accent)}
   .slide-body{background:#f2f6fa;padding:var(--panel-pad);overflow:auto;-webkit-overflow-scrolling:touch}
 
-  /* ======= TAPAHTUMAT (pidetään kuten toimivassa versiossa) ======= */
+  /* ======= TAPAHTUMAT ======= */
   .events .slide-header{background:#007b83}
   .events-list{display:grid;gap:12px}
   .event-card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);padding:12px 14px}
@@ -36,10 +36,11 @@
   .event-title{font-weight:800;font-size:1.2rem;word-break:break-word}
   .event-description{margin-top:6px;color:#333}
 
-  /* ======= SÄÄ ======= */
-  .weather .slide-header{background:#3b82f6}
+  /* ======= SÄÄ (FMI) ======= */
+  .weather .slide-header{background:#2563eb}
+  .wx-wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-rows:auto auto;gap:14px}
   .weather-card{
-    max-width:900px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);
+    background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);
     padding:18px 20px;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:12px
   }
   .w-city{font-size:1.3rem;font-weight:900}
@@ -48,6 +49,11 @@
   .w-badge{background:#eef3f8;border-radius:8px;padding:6px 10px}
   .w-icon{font-size:2rem;margin-left:8px}
   .muted{opacity:.7}
+  .forecast{display:grid;gap:10px;grid-template-columns:repeat(6,1fr)}
+  .fc-item{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 6px rgba(0,0,0,.12);text-align:center}
+  .fc-time{font-weight:800;margin-bottom:6px}
+  .fc-temp{font-size:1.2rem;font-weight:900}
+  .fc-sub{font-size:.95rem;color:#333;margin-top:4px}
 
   /* ======= VAROITUKSET (FMI CAP) ======= */
   .warn .slide-header{background:#2b3648}
@@ -62,7 +68,7 @@
   .lvl-orange .warn-icon{background:#ff9800}
   .lvl-red    .warn-icon{background:#e53935}
 
-  /* ======= LIIKENNE ======= */
+  /* ======= LIIKENNE (Digitraffic) ======= */
   .traffic .slide-header{background:#8b5cf6}
   .traffic-list{display:grid;gap:10px;max-width:1200px;margin:0 auto}
   .traffic-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -73,6 +79,7 @@
   @media (max-width: 1100px){
     .event-title{font-size:1.1rem}
     .w-temp{font-size:2.2rem}
+    .forecast{grid-template-columns:repeat(3,1fr)}
   }
 </style>
 </head>
@@ -91,14 +98,17 @@
     </div>
   </section>
 
-  <!-- 2) SÄÄ (Klaukkalan Metsäkylä) -->
-  <section class="slide weather" id="slide-weather" aria-label="Sää – Klaukkalan Metsäkylä">
-    <div class="slide-header">Sää – Klaukkalan Metsäkylä</div>
+  <!-- 2) SÄÄ (FMI – Klaukkalan Metsäkylä) -->
+  <section class="slide weather" id="slide-weather" aria-label="Sää – Klaukkalan Metsäkylä (FMI)">
+    <div class="slide-header">Sää – Klaukkalan Metsäkylä (FMI)</div>
     <div class="slide-body">
-      <div id="wx-card" class="weather-card">
-        <div class="w-city">Klaukkalan Metsäkylä</div>
-        <div class="w-temp muted">…</div>
-        <div class="w-row"><span class="w-badge">Ladataan…</span></div>
+      <div class="wx-wrap">
+        <div id="wx-card" class="weather-card">
+          <div class="w-city">Klaukkalan Metsäkylä</div>
+          <div class="w-temp muted">…</div>
+          <div class="w-row"><span class="w-badge">Ladataan FMI-säätietoja…</span></div>
+        </div>
+        <div id="wx-forecast" class="forecast"></div>
       </div>
     </div>
   </section>
@@ -154,7 +164,7 @@ setInterval(()=>{
 }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
 
 /* Timeout-apu */
-async function fetchWithTimeout(url, ms=9000){
+async function fetchWithTimeout(url, ms=12000){
   const ctrl = new AbortController(); const id = setTimeout(()=>ctrl.abort(), ms);
   try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store'}); clearTimeout(id); return r; }
   catch(e){ clearTimeout(id); throw e; }
@@ -240,36 +250,142 @@ function renderEvents(containerId, payload) {
   });
 }
 
-/* ===================== 2) SÄÄ (Klaukkalan Metsäkylä) ===================== */
-const KL_PLACE = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 };
-function wxIcon(code){
-  const m={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌦️',61:'🌧️',63:'🌧️',65:'🌧️',
-           71:'❄️',73:'❄️',75:'❄️',80:'🌧️',81:'🌧️',82:'🌧️',95:'⛈️',96:'⛈️',99:'⛈️'}; return m[code]||'🌡️';
+/* ===================== 2) SÄÄ (FMI WFS – HARMONIE) ===================== */
+const KL = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 };
+/* FMI WFS: forecast::harmonie::surface::point::simple
+   parametrit: temperature, windSpeedMS, WeatherSymbol3, precipitation1h */
+function wxEmoji(symbol){
+  /* WeatherSymbol3 → suuntaa-antava ikonointi */
+  const s = Number(symbol);
+  if ([1].includes(s)) return '☀️';
+  if ([2,21,22].includes(s)) return '🌤️';
+  if ([3,31,32,33].includes(s)) return '⛅';
+  if ([4].includes(s)) return '☁️';
+  if ([5,6,7,8,9,10].includes(s)) return '🌧️';
+  if ([11,12,13,14].includes(s)) return '❄️';
+  if ([15,16,17,18,19,20].includes(s)) return '⛈️';
+  return '🌡️';
 }
-async function loadWeather(){
-  const card=document.getElementById('wx-card');
-  const url=`https://api.open-meteo.com/v1/forecast?latitude=${KL_PLACE.lat}&longitude=${KL_PLACE.lon}&current=temperature_2m,weather_code,wind_speed_10m&hourly=precipitation&timezone=auto&_=${Date.now()}`;
+function parseFmiSimple(xmlText){
+  /* Yritetään “simple point” -vastetta: rivit joissa <Time> ja per parametri <ParameterName>/<ParameterValue>
+     Muodostetaan aikaleimoittain olio: { time: Date, T, WS, RR, SYM } */
+  const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+  // Etsitään kaikki TimeValuePairit ja/tai om:result sisällä olevat rivit
+  const pairs = Array.from(doc.getElementsByTagNameNS('*','TimeValuePair'));
+  if (!pairs.length){
+    // fallback: etsi generic <wml2:MeasurementTimeseries>
+    const vals = Array.from(doc.getElementsByTagNameNS('*','MeasurementTVP'));
+    if (!vals.length) return [];
+    // Tarvitaan parametrin nimi → noudetaan sarjat
+    const series = Array.from(doc.getElementsByTagNameNS('*','MeasurementTimeseries'));
+    const outMap = new Map();
+    series.forEach(ts=>{
+      const pName = ts.getAttribute('gml:id') || '';
+      const param =
+        /temperature/i.test(pName) ? 'T' :
+        /windspeedms/i.test(pName) ? 'WS' :
+        /precipitation1h/i.test(pName) ? 'RR' :
+        /weathersymbol3/i.test(pName) ? 'SYM' : null;
+      if (!param) return;
+      const tvps = Array.from(ts.getElementsByTagNameNS('*','MeasurementTVP'));
+      tvps.forEach(tvp=>{
+        const t = tvp.getElementsByTagNameNS('*','time')[0]?.textContent;
+        const v = tvp.getElementsByTagNameNS('*','value')[0]?.textContent;
+        if (!t || v==null) return;
+        const key = new Date(t).toISOString();
+        if (!outMap.has(key)) outMap.set(key, { time:new Date(t) });
+        const rec = outMap.get(key);
+        if (param==='T') rec.T = Number(v);
+        if (param==='WS') rec.WS = Number(v);
+        if (param==='RR') rec.RR = Number(v);
+        if (param==='SYM') rec.SYM = Number(v);
+      });
+    });
+    return Array.from(outMap.values()).sort((a,b)=>a.time-b.time);
+  } else {
+    // “simple” rakenne: jokaisessa parissa on ParameterName/Value + Time
+    const outMap = new Map();
+    pairs.forEach(p=>{
+      const name = p.getElementsByTagNameNS('*','ParameterName')[0]?.textContent || '';
+      const val  = p.getElementsByTagNameNS('*','ParameterValue')[0]?.textContent ?? null;
+      const time = p.getElementsByTagNameNS('*','Time')[0]?.textContent || '';
+      if (!time || val==null) return;
+      const key = new Date(time).toISOString();
+      if (!outMap.has(key)) outMap.set(key, { time:new Date(time) });
+      const rec = outMap.get(key);
+      if (/^temperature$/i.test(name)) rec.T = Number(val);
+      else if (/^windspeedms$/i.test(name) || /^windspeedms$/i.test(name)) rec.WS = Number(val);
+      else if (/^precipitation1h$/i.test(name)) rec.RR = Number(val);
+      else if (/^weathersymbol3$/i.test(name)) rec.SYM = Number(val);
+    });
+    return Array.from(outMap.values()).sort((a,b)=>a.time-b.time);
+  }
+}
+async function loadFmiWeather(){
+  const card = document.getElementById('wx-card');
+  const forecastBox = document.getElementById('wx-forecast');
+  card.innerHTML = `
+    <div class="w-city">${KL.name}</div>
+    <div class="w-temp muted">…</div>
+    <div class="w-row"><span class="w-badge">Ladataan FMI-säätietoja…</span></div>`;
+
   try{
-    const r=await fetchWithTimeout(url, 12000);
-    if(!r.ok) throw new Error('weather '+r.status);
-    const d=await r.json();
-    const t=Math.round(d?.current?.temperature_2m ?? NaN);
-    const w=Math.round(d?.current?.wind_speed_10m ?? NaN);
-    const rain=(d?.hourly?.precipitation?.[0] ?? 0);
-    const code=d?.current?.weather_code ?? null;
-    card.innerHTML=`
-      <div class="w-city">${KL_PLACE.name}</div>
-      <div class="w-temp">${isFinite(t)? t+'°C':'–'} ${code!==null? `<span class="w-icon">${wxIcon(code)}</span>`:''}</div>
+    const base = 'https://opendata.fmi.fi/wfs';
+    const params = new URLSearchParams({
+      service:'WFS',
+      version:'2.0.0',
+      request:'getFeature',
+      storedquery_id:'fmi::forecast::harmonie::surface::point::simple',
+      // latlon "lat,lon" – FMI hyväksyy tässä järjestyksessä
+      latlon:`${KL.lat},${KL.lon}`,
+      parameters:'temperature,windSpeedMS,WeatherSymbol3,precipitation1h'
+    });
+    const url = PROXY + encodeURIComponent(`${base}?${params.toString()}`) + '&_=' + Date.now();
+    const r = await fetchWithTimeout(url, 12000);
+    if (!r.ok) throw new Error('FMI ' + r.status);
+    const xml = await r.text();
+    const rows = parseFmiSimple(xml);
+    if (!rows.length) throw new Error('FMI: tyhjä vastaus');
+
+    // Nykyhetki = lähin aikaleima
+    const now = Date.now();
+    let current = rows.reduce((best,rec)=>{
+      const d = Math.abs(rec.time - now);
+      return (best==null || d < best.d) ? { rec, d } : best;
+    }, null)?.rec;
+
+    if (!current) current = rows[0];
+
+    // Renderöi pääkortti
+    const temp = isFinite(current.T)? Math.round(current.T) : '–';
+    const wind = isFinite(current.WS)? Math.round(current.WS) : '–';
+    const rain = isFinite(current.RR)? current.RR.toFixed(1) : '–';
+    const sym  = current.SYM!=null ? wxEmoji(current.SYM) : '🌡️';
+
+    card.innerHTML = `
+      <div class="w-city">${KL.name}</div>
+      <div class="w-temp">${temp}°C <span class="w-icon">${sym}</span></div>
       <div class="w-row">
-        <span class="w-badge">Tuuli ${isFinite(w)? w+' m/s':'–'}</span>
-        <span class="w-badge">Sade ${rain?.toFixed ? rain.toFixed(1) : rain} mm</span>
-        <span class="w-badge">Koodi ${code ?? '–'}</span>
+        <span class="w-badge">Tuuli ${wind} m/s</span>
+        <span class="w-badge">Sade ${rain} mm/h</span>
+        <span class="w-badge">Klo ${current.time.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}</span>
       </div>`;
-  }catch{
-    card.innerHTML=`
-      <div class="w-city">${KL_PLACE.name}</div>
+
+    // Ennuste: seuraavat 6 tuntia
+    const upcoming = rows.filter(r => r.time > current.time).slice(0,6);
+    forecastBox.innerHTML = upcoming.map(r=>`
+      <div class="fc-item">
+        <div class="fc-time">${r.time.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}</div>
+        <div class="fc-temp">${isFinite(r.T)? Math.round(r.T)+'°C':'–'}</div>
+        <div class="fc-sub">${wxEmoji(r.SYM||0)} ${isFinite(r.RR)? r.RR.toFixed(1):'–'} mm/h • ${isFinite(r.WS)? Math.round(r.WS):'–'} m/s</div>
+      </div>
+    `).join('');
+  }catch(e){
+    card.innerHTML = `
+      <div class="w-city">${KL.name}</div>
       <div class="w-temp">–</div>
-      <div class="w-row"><span class="w-badge">Sää ei saatavilla</span></div>`;
+      <div class="w-row"><span class="w-badge">FMI-säätietoja ei voitu hakea</span></div>`;
+    document.getElementById('wx-forecast').innerHTML = '';
   }
 }
 
@@ -344,23 +460,17 @@ async function loadTraffic(){
     let msgs = data?.trafficMessages || data?.features || data?.messages || [];
     if (Array.isArray(data?.features)) msgs = data.features.map(f => f.properties || f);
 
-    const wanted = ['Helsinki','Vantaa','Espoo','Kauniainen','Nurmijärvi','Hyvinkää','Järvenpää','Tuusula','Kerava','Sipoo','Kirkkonummi','Vihti','Klaukkala','Uusimaa','Pääkaupunkiseutu'];
-    const inArea = (m) => {
-      const s = (m?.title || m?.announcement || m?.location || m?.roadAddressRegion || '').toString();
-      return wanted.some(w => s.toLowerCase().includes(w.toLowerCase()));
-    };
-    let list = msgs.filter(inArea);
-    if (list.length < 8) list = msgs; // fallback
-
-    const html = list.slice(0, 14).map(m=>{
+    const html = msgs.slice(0, 14).map(m=>{
       const title = m.title || m.announcement || 'Liikennetiedote';
       const time  = m?.releaseTime || m?.publicationTime || m?.eventTime || m?.lastUpdated || '';
       const when  = time ? new Date(time).toLocaleString('fi-FI') : '';
       const desc  = m?.description || m?.cause || '';
       const region= m?.roadAddressRegion || m?.location || '';
+      const road  = m?.roadNumber ? `VT ${m.roadNumber}` : (m?.road?.number ? `VT ${m.road.number}` : '');
+      const where = [region, road].filter(Boolean).join(' • ');
       return `<div class="traffic-item">
         <div class="t-title">${title}</div>
-        <div class="t-meta">${region}${when ? ' • '+when : ''}</div>
+        <div class="t-meta">${where || 'Alue tuntematon'}${when ? ' • '+when : ''}</div>
         ${desc ? `<div class="t-desc">${desc}</div>` : ''}
       </div>`;
     }).join('');
@@ -373,15 +483,15 @@ async function loadTraffic(){
 /* ===================== INIT + PÄIVITYSSYKLI ===================== */
 async function init(){
   const ev = await loadICS(ICS_URL());   renderEvents('miehisto-events', ev);
-  await loadWeather();
+  await loadFmiWeather();
   await loadWarnings();
   await loadTraffic();
 
-  // Päivitykset (ei luuppia pysäytetä slidevaihdossa)
+  // Päivitykset
   setInterval(async ()=>{ const e=await loadICS(ICS_URL()); renderEvents('miehisto-events', e); }, 5*60*1000);
-  setInterval(loadWeather,   10*60*1000);
-  setInterval(loadWarnings,  10*60*1000);
-  setInterval(loadTraffic,    5*60*1000);
+  setInterval(loadFmiWeather,  10*60*1000);
+  setInterval(loadWarnings,    10*60*1000);
+  setInterval(loadTraffic,      5*60*1000);
 }
 init();
 </script>
