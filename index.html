@@ -40,9 +40,15 @@
     z-index: 9999;
   }
 
-  /* Yleinen slide-alue */
-  .slide { position: absolute; inset: 0; display: none; }
-  .slide.active { display: block; }
+  /* SLIDE: ei display:none -> käytetään opacitya */
+  .slide {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity .35s ease;
+  }
+  .slide.active {
+    opacity: 1; pointer-events: auto;
+  }
 
   /* ---- TAPAHTUMAT ---- */
   .events-wrap {
@@ -98,28 +104,37 @@
   }
   .warn-header {
     display: flex; align-items: center; justify-content: center;
-    background: #3b4252; color: #fff; font-weight: 700; font-size: var(--header-font);
+    background: #2b3648; color: #fff; font-weight: 700; font-size: var(--header-font);
+    letter-spacing: .3px;
   }
   .warn-body {
-    background: #eef2f5; padding: 14px; overflow: hidden;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    background: #eef2f5; padding: 16px; overflow: hidden;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
     box-sizing: border-box;
   }
-  .warn-box {
-    background: #fff; border-radius: 10px; padding: 12px 14px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.12);
-    display: flex; flex-direction: column; gap: 8px;
-  }
   .warn-empty {
-    grid-column: 1 / -1; text-align: center; font-size: 1.2rem; color: #333; padding: 20px;
-    background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    grid-column: 1 / -1;
+    text-align: center; font-size: 1.15rem; color: #333; padding: 22px;
+    background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.12);
   }
-  .w-title { font-weight: 800; font-size: 1.25rem; }
+  .warn-box {
+    background: #fff; border-radius: 12px; padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    display: grid; grid-template-columns: 32px 1fr; gap: 10px;
+    align-items: start;
+  }
+  .warn-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center; color: #fff; font-weight: 900;
+  }
+  .warn-content { display: flex; flex-direction: column; gap: 6px; }
+  .w-title { font-weight: 800; font-size: 1.18rem; line-height: 1.25; }
   .w-when { font-size: 1rem; opacity: .8; }
-  .w-desc { font-size: 1.05rem; }
-  .lvl-yellow { border-left: 8px solid #f2c744; background: #fff9e6; }
-  .lvl-orange { border-left: 8px solid #ff9800; background: #fff2e0; }
-  .lvl-red    { border-left: 8px solid #e53935; background: #ffeaea; }
+  .w-desc { font-size: 1.05rem; line-height: 1.3; }
+
+  .lvl-yellow .warn-icon { background: #f2c744; color: #1d1d1f; }
+  .lvl-orange .warn-icon { background: #ff9800; }
+  .lvl-red    .warn-icon { background: #e53935; }
 
   /* Mobiili / pienempi korkeus: scroll ja korttien vapautus */
   @media (max-width: 1024px), (max-height: 900px) {
@@ -162,7 +177,6 @@
       <script defer data-cfasync="false" type="text/javascript"
         src="https://www.forecabox.com/dist/daily.min.js"
         onload="loadDaily('TDuVRzzeNw')"></script>
-      <!-- Foreca attribution ohjeen mukaan -->
       <a id="foreca-attribution-TDuVRzzeNw" href="https://www.foreca.com/"
          rel="noopener" target="_blank"
          style="position:absolute;bottom:10px;left:10px;">
@@ -218,7 +232,7 @@ const SWITCH_MS = 20000;
 const IS_MOBILE = matchMedia('(max-width: 1024px)').matches || matchMedia('(max-height: 900px)').matches;
 const SHOW_LIMIT = IS_MOBILE ? 20 : 5;
 
-/* Cloudflare Worker -proxy iCalille (vaihda omaan, jos eri) */
+/* Cloudflare Worker -proxy iCalille */
 const PROXY = 'https://vpk.mijuze1.workers.dev/?url=';
 const ICS_URL = () => PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical') + '&_=' + Date.now();
 
@@ -356,7 +370,7 @@ function renderEvents(containerId, payload) {
   });
 }
 
-/* ===== VAROITUKSET (Open-Meteo/Meteoalarm) ===== */
+/* ===== VAROITUKSET (Open-Meteo / Meteoalarm: FMI Suomessa) ===== */
 async function loadWarnings(lat, lon) {
   try {
     const url = `https://api.open-meteo.com/v1/warnings?latitude=${lat}&longitude=${lon}&timezone=auto&_=${Date.now()}`;
@@ -389,20 +403,32 @@ function renderWarnings(data){
     const div = document.createElement('div');
     div.className = `warn-box ${cls}`;
     div.innerHTML = `
-      <div class="w-title">${w.event || 'Varoitus'}</div>
-      <div class="w-when">${start}${end ? ' – ' + end : ''}</div>
-      ${w.description ? `<div class="w-desc">${w.description}</div>` : ''}
+      <div class="warn-icon">${w.severity >=3 ? '!' : w.severity===2 ? '!' : 'i'}</div>
+      <div class="warn-content">
+        <div class="w-title">${w.event || 'Varoitus'}</div>
+        <div class="w-when">${start}${end ? ' – ' + end : ''}</div>
+        ${w.description ? `<div class="w-desc">${w.description}</div>` : ''}
+      </div>
     `;
     box.appendChild(div);
   });
 }
 
-/* ===== SLIDE KIERRÄTYS ===== */
-const slides = [ 'slide-events', 'slide-foreca', 'slide-foreca-current', 'slide-warnings' ];
+/* ===== SLIDE KIERRÄTYS + Foreca re-init ===== */
+const slideIds = [ 'slide-events', 'slide-foreca', 'slide-foreca-current', 'slide-warnings' ];
 let currentSlide = 0;
-function showSlide(i){ slides.forEach((id,idx)=>document.getElementById(id).classList.toggle('active', idx===i)); }
+function showSlide(i){
+  slideIds.forEach((id,idx)=>document.getElementById(id).classList.toggle('active', idx===i));
+  // Re-init Foreca kun slide aktivoituu (varmistaa renderöinnin)
+  if (slideIds[i] === 'slide-foreca' && typeof loadDaily === 'function') {
+    try { loadDaily('TDuVRzzeNw'); } catch(_) {}
+  }
+  if (slideIds[i] === 'slide-foreca-current' && typeof loadCurrentConditions === 'function') {
+    try { loadCurrentConditions('OwCjwleDmy'); } catch(_) {}
+  }
+}
 function startCarousel(){
-  setInterval(()=>{ currentSlide=(currentSlide+1)%slides.length; showSlide(currentSlide); }, SWITCH_MS);
+  setInterval(()=>{ currentSlide=(currentSlide+1)%slideIds.length; showSlide(currentSlide); }, SWITCH_MS);
 }
 
 /* ===== KELLO ===== */
@@ -420,7 +446,7 @@ async function init(){
   const events = await loadICS(ICS_URL());
   renderEvents('miehisto-events', events);
 
-  // Varoitukset
+  // Varoitukset (Meteoalarm / FMI FI:ssä)
   const warns = await loadWarnings(LAT, LON);
   renderWarnings(warns);
 
