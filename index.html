@@ -32,7 +32,7 @@
   .slide-header{
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.5rem;color:#fff;background:var(--accent)
   }
-  .slide-body{background:#f2f6fa;padding:var(--panel-pad);overflow:auto;-webkit-overflow-scrolling:touch}
+  .slide-body{background:#f2f6fa;padding:var(--panel-pad);overflow:hidden;-webkit-overflow-scrolling:touch}
 
   /* ======= TAPAHTUMAT ======= */
   .events .slide-header{background:var(--accent)}
@@ -47,16 +47,16 @@
   .event-title{font-weight:800;font-size:1.18rem;word-break:break-word}
   .event-description{margin-top:6px;color:#333;font-size:1.02rem}
 
-  /* 1920×1080: ~5 korttia ilman scrollia */
-  @media (min-width: 1600px){
+  /* 1920×1080: ~5 korttia ilman scrollia (desktop) */
+  @media (min-width: 1025px){
     .events-list{grid-auto-rows:minmax(0,1fr)}
     .event-card{padding:14px 16px}
     .event-title{font-size:1.22rem}
   }
 
-  /* ======= SÄÄ + VAROITUKSET (ILMAN SCROLLIA) ======= */
+  /* ======= SÄÄ + VAROITUKSET ======= */
   .wx-alerts .slide-header{background:var(--accent)}
-  .wx-alerts .slide-body{overflow:hidden} /* tärkeä: ei scrolleja tällä dialla */
+  .wx-alerts .slide-body{overflow:hidden} /* desktop: ei scrollia */
 
   .wx-grid{
     height:100%;
@@ -93,7 +93,7 @@
   .fc-temp{font-size:1.05rem;font-weight:900}
   .fc-sub{font-size:.92rem;color:#333;margin-top:2px}
 
-  /* Varoitukset – ei sisäscrollia, määrä rajattu JS:ssä */
+  /* Varoitukset – määrä rajataan JS:ssä */
   .warn-list{display:grid;gap:10px}
   .warn-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;grid-template-columns:28px 1fr;gap:10px}
   .warn-icon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900}
@@ -105,7 +105,7 @@
   .lvl-orange .warn-icon{background:#ff9800}
   .lvl-red    .warn-icon{background:#e53935}
 
-  /* ======= LIIKENNE (oma sivu) ======= */
+  /* ======= LIIKENNE ======= */
   .traffic-only .slide-header{background:var(--accent)}
   .traffic-list{display:grid;gap:10px}
   .traffic-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -117,6 +117,14 @@
   .traffic-item.accident .t-title{color:#c62828}
   .traffic-item.accident .t-meta{color:#b71c1c}
   .traffic-item.inactive{background:#eee;color:#555}
+
+  /* ======= MOBIILI / TABLET (scroll päälle, kellon piilotus) ======= */
+  @media (max-width: 1024px){
+    #clock{display:none}                    /* kello pois mobiilissa */
+    .slide-body{overflow:auto}              /* kaikille dioille scroll mobiilissa */
+    .forecast{grid-template-columns:repeat(3,1fr)}  /* kompaktimpi */
+    .wx-grid{max-width:none}
+  }
 </style>
 </head>
 <body>
@@ -189,6 +197,9 @@
 const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← VAIHDA omaan Worker-osoitteeseesi
 const SLIDES = ['slide-events','slide-wx','slide-traffic'];  // 3 diaa
 let   slideIndex = 0;
+
+// mobiilidetektiota varten
+const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
 
 function tickClock(){
   const now = new Date();
@@ -264,6 +275,10 @@ async function loadICS(url) {
     const comp = new ICAL.Component(jcal);
     const vevents = comp.getAllSubcomponents('vevent').map(ve => new ICAL.Event(ve));
     const now = new Date();
+
+    // Näytettävien määrä: mobiilissa enemmän (scroll), desktopissa kiinteä
+    const LIMIT = IS_MOBILE ? 12 : 5;
+
     const items = vevents
       .filter(ev => ev.endDate && ev.endDate.toJSDate() > now)
       .map(ev => ({
@@ -274,7 +289,7 @@ async function loadICS(url) {
         allDay: ev.startDate.isDate && ev.endDate.isDate
       }))
       .sort((a,b)=>a.startDate-b.startDate)
-      .slice(0, 5);  // 1920×1080: näytetään 5 korttia
+      .slice(0, LIMIT);
     return { items };
   } catch (e) {
     return { items: [], error: e.name === 'AbortError' ? 'Aikakatkaisu' : 'Verkkovirhe' };
@@ -386,7 +401,7 @@ async function loadFmiWeather(){
         <span class="w-badge">Klo ${current.time.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}</span>
       </div>`;
 
-    // Ennuste: seuraavat 6 tuntia
+    // Ennuste: seuraavat 6 tuntia (mobiilissa tämän voi selata)
     const upcoming = rows.filter(r => r.time > current.time).slice(0,6);
     forecastBox.innerHTML = upcoming.map(r=>`
       <div class="fc-item">
@@ -440,10 +455,13 @@ async function loadWarnings(){
       return {title, desc, when, level};
     });
 
-    /* Ilman scrolleja: KU max 5 + FI max 5 */
+    /* Ilman scrollia desktopilla: KU max 5 + FI max 5 */
     const kuAll = items.filter(x => /Nurmij|Keski-?Uusimaa|Hyvink|Järvenpää|Tuusula|Kerava|Mäntsälä|Pornainen|Klaukkala|Vantaa/i.test(x.title + ' ' + x.desc));
-    const ku = kuAll.slice(0,5);
-    const fi = items.slice(0,5);
+    const limitKU = IS_MOBILE ? 10 : 5;
+    const limitFI = IS_MOBILE ? 10 : 5;
+
+    const ku = kuAll.slice(0,limitKU);
+    const fi = items.slice(0,limitFI);
 
     if (!ku.length && !fi.length){
       list.innerHTML = '<div class="warn-item"><div class="warn-content">Ei voimassa olevia varoituksia</div></div>';
@@ -571,7 +589,7 @@ async function loadTraffic(){
     });
 
     // Rakenna kortit
-    const html = list.slice(0, 30).map(f=>{
+    const html = list.slice(0, IS_MOBILE ? 40 : 30).map(f=>{
       const it = toTrafficItem(f);
       const inactive = it.status !== 'ACTIVE';
       return `<div class="traffic-item card${inactive ? ' inactive' : ''}${it.accident ? ' accident' : ''}">
