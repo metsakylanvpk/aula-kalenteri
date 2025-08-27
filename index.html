@@ -2,14 +2,14 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8" />
-<title>Aulan näyttö – Miehistö • Sää • Varoitukset • Liikenne</title>
+<title>Aulan näyttö – Tapahtumat • Sää • Liikenne</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
   :root{
     --gap: 16px;
     --panel-pad: 16px;
     --header-h: 64px;
-    --accent: #007b83;         /* Tapahtumat-otsikko */
+    --accent: #007b83;         /* yhtenäinen tehosteväri */
     --slide-time-ms: 20000;    /* 20 s per näkymä */
   }
   html,body{
@@ -35,7 +35,7 @@
   .slide-body{background:#f2f6fa;padding:var(--panel-pad);overflow:auto;-webkit-overflow-scrolling:touch}
 
   /* ======= TAPAHTUMAT ======= */
-  .events .slide-header{background:#007b83}
+  .events .slide-header{background:var(--accent)}
   .events-list{display:grid;gap:12px}
   .event-card{
     background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);
@@ -55,11 +55,11 @@
   }
 
   /* ======= SÄÄ + VAROITUKSET (ILMAN SCROLLIA) ======= */
-  .wx-alerts .slide-header{background:#334155}
+  .wx-alerts .slide-header{background:var(--accent)}
   .wx-alerts .slide-body{overflow:hidden} /* tärkeä: ei scrolleja tällä dialla */
 
   .wx-grid{
-    height:calc(100% - 0px); /* täytä dianykyma */
+    height:100%;
     max-width:1600px; margin:0 auto;
     display:grid; gap:16px;
     grid-template-rows:auto auto 1fr; /* sää, ennuste, varoitukset täyttää lopun */
@@ -70,7 +70,7 @@
       "warn";
   }
   .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
-  .panel-h{height:48px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px;background:#334155}
+  .panel-h{height:48px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px;background:var(--accent)}
   .panel-b{background:#f2f6fa;padding:12px}
 
   .p-wx   {grid-area: wx}
@@ -106,7 +106,7 @@
   .lvl-red    .warn-icon{background:#e53935}
 
   /* ======= LIIKENNE (oma sivu) ======= */
-  .traffic-only .slide-header{background:#4b5563}
+  .traffic-only .slide-header{background:var(--accent)}
   .traffic-list{display:grid;gap:10px}
   .traffic-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
   .t-title{font-weight:800;margin-bottom:4px}
@@ -133,14 +133,14 @@
     </div>
   </section>
 
-  <!-- 2) SÄÄ + VAROITUKSET (ilman scrollia) -->
+  <!-- 2) SÄÄ + VAROITUKSET -->
   <section class="slide wx-alerts" id="slide-wx" aria-label="Sää ja varoitukset">
-    <div class="slide-header">Sää – Klaukkalan Metsäkylä • Varoitukset (FMI)</div>
+    <div class="slide-header">Sää ja varoitukset</div>
     <div class="slide-body">
       <div class="wx-grid">
 
         <div class="panel p-wx">
-          <div class="panel-h">FMI – tämänhetkinen sää</div>
+          <div class="panel-h">Nykyinen sää</div>
           <div class="panel-b">
             <div id="wx-card" class="weather-card">
               <div class="w-city">Klaukkalan Metsäkylä</div>
@@ -151,14 +151,14 @@
         </div>
 
         <div class="panel p-fc">
-          <div class="panel-h">FMI – seuraavat tunnit</div>
+          <div class="panel-h">Seuraavat tunnit</div>
           <div class="panel-b">
             <div id="wx-forecast" class="forecast"></div>
           </div>
         </div>
 
         <div class="panel p-warn">
-          <div class="panel-h">FMI – varoitukset</div>
+          <div class="panel-h">Varoitukset (FMI)</div>
           <div class="panel-b">
             <div id="warn-list" class="warn-list">
               <div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div>
@@ -172,7 +172,7 @@
 
   <!-- 3) LIIKENNE -->
   <section class="slide traffic-only" id="slide-traffic" aria-label="Liikennetiedotteet">
-    <div class="slide-header">Liikennetiedotteet – PK-seutu / Keski-Uusimaa</div>
+    <div class="slide-header">Liikennetiedotteet</div>
     <div class="slide-body">
       <div id="traffic-list" class="traffic-list">
         <div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>
@@ -208,6 +208,7 @@ setInterval(()=>{
   showSlide(slideIndex);
 }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
 
+/* Pienet apurit */
 async function fetchWithTimeout(url, ms=12000, opts={}){
   const ctrl = new AbortController(); const id = setTimeout(()=>ctrl.abort(), ms);
   try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store', ...opts}); clearTimeout(id); return r; }
@@ -438,7 +439,7 @@ async function loadWarnings(){
       return {title, desc, when, level};
     });
 
-    // Näytä ilman scrolleja: KU max 5 + FI max 5
+    /* Ilman scrolleja: KU max 5 + FI max 5 */
     const kuAll = items.filter(x => /Nurmij|Keski-?Uusimaa|Hyvink|Järvenpää|Tuusula|Kerava|Mäntsälä|Pornainen|Klaukkala/i.test(x.title + ' ' + x.desc));
     const ku = kuAll.slice(0,5);
     const fi = items.slice(0,5);
@@ -483,7 +484,6 @@ function isAccidentFeature(feature){
   const txt = JSON.stringify(feature?.properties || {}).toLowerCase();
   return txt.includes('onnettomu') || txt.includes('kolari') || txt.includes('liikenneonnettomuus');
 }
-// Poimi aikaleima ja muotoile
 function extractWhen(feature){
   const anns = feature?.properties?.announcements || [];
   const a = anns[0] || {};
