@@ -124,15 +124,27 @@
 
   /* ======= MOBIILI / TABLET ======= */
   @media (max-width: 1024px){
-    #clock{display:none}                    /* kello pois mobiilissa */
-    .slide-body{
-      overflow:auto;                        /* scroll päälle mobiilissa */
-      -webkit-overflow-scrolling:touch;     /* pehmeä scroll iOS */
-      overscroll-behavior: contain;
-    }
-    .forecast{grid-template-columns:repeat(3,1fr)}  /* kompaktimpi */
-    .wx-grid{max-width:none}
+  /* kello pois mobiilissa */
+  #clock{display:none}
+
+  /* tee dian rungosta oikeasti scrollattava mobiilissa */
+  .slide-body{
+    overflow:auto;                        /* scroll päälle */
+    -webkit-overflow-scrolling:touch;     /* pehmeä iOS-scroll */
+    overscroll-behavior: contain;
+    /* varaa korkeus: koko näyttö - otsikkopalkki - marginaalit */
+    max-height: calc(100vh - var(--header-h) - 2*var(--gap));
   }
+
+  /* säädian sisäruudukko ei pakota 100% korkeutta mobiilissa */
+  .wx-grid{
+    height:auto;          /* oli: height:100% */
+    max-width:none;
+  }
+
+  /* kompakti ennuste mobiilissa */
+  .forecast{grid-template-columns:repeat(3,1fr)}
+}
 </style>
 </head>
 <body>
@@ -664,3 +676,4 @@ init();
 </script>
 </body>
 </html>
+
