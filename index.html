@@ -516,80 +516,96 @@ const INCIDENT_KEYWORDS = ['tieliikenneonnettomuus','liikenneonnettomuus','kolar
 function areaHit(txt){ return REGION_NAMES.some(n => txt.includes(n.toLowerCase())); }
 function typeHit(txt){ return INCIDENT_KEYWORDS.some(k => txt.includes(k)); }
 function tagFromText(t){ if (t.includes('palo')) return 'fire'; if (t.includes('onnettomuus')||t.includes('kolari')) return 'accident'; return ''; }
+
+/* Päivitetty: tunnistaa myös "13:58 :05" ja "13:58:05" */
 function extractDT(txt){
-  const d1 = txt.match(/\b20\d{2}-\d{2}-\d{2}\b/);
-  const d2 = txt.match(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/);
-  const t1 = txt.match(/\b\d{1,2}:\d{2}\b/);
-  return { date: d1?.[0] || d2?.[0] || '', time: t1?.[0] || '' };
+  const t = txt.replace(/\u00a0/g,' ');
+  const d1 = t.match(/\b\d{2}\.\d{2}\.\d{4}\b/);
+  const d2 = t.match(/\b20\d{2}-\d{2}-\d{2}\b/);
+
+  // Yhdistä "HH:MM :SS" → "HH:MM:SS"
+  let norm = t.replace(/(\b\d{1,2}):\s?(\d{2})\s?:\s?(\d{2})\b/g, '$1:$2:$3');
+
+  // Ota aika HH:MM(:SS) – sallitaan myös ilman sekunteja
+  const tm = norm.match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/);
+  return { date: d1?.[0] || d2?.[0] || '', time: tm?.[0] || '' };
 }
-  
+
+/* Päivitetty: parempi pilkkominen + roskien poisto per segmentti */
 function parseTilannehuoneHTML(rawHtml){
-  // 1) Puhdistus
   const tmp = document.createElement('div');
   tmp.innerHTML = rawHtml;
+
+  // Poista skriptit, tyylit, mainokset, evästebannerit
   tmp.querySelectorAll(
     'script, style, iframe, noscript, .lwhbim, .ad, .ad-container, [id*="ads"], [class*="ad-"], [id*="cookie"], [class*="cookie"]'
-  ).forEach(el => el.remove());
+  ).forEach(el=>el.remove());
 
-  // 2) Poimi pääsisällön pelkkä teksti
+  // Ota pääalueen teksti
   const host = tmp.querySelector('#cnt_lista') || tmp.body || tmp;
   let text = (host.textContent || '')
-    .replace(/\u00a0/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/\u00a0/g,' ')
+    .replace(/\s+/g,' ')
     .trim();
-
   if (!text) return [];
 
-  // 3) Pilko yksittäisiin hälytyksiin:
-  //    Käytetään lookaheadia, joka osuu jokaiseen "DD.MM.YYYY HH:MM" TAI "YYYY-MM-DD HH:MM"
-  const splitRe = /(?=(?:\b\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}\b|\b20\d{2}-\d{2}-\d{2}\s+\d{1,2}:\d{2}\b))/g;
-  const indices = [...text.matchAll(splitRe)].map(m => m.index);
-  if (indices.length === 0) return [];
+  // Normalisoi kellot: "HH:MM :SS" → "HH:MM:SS"
+  text = text.replace(/(\b\d{1,2}):\s?(\d{2})\s?:\s?(\d{2})\b/g, '$1:$2:$3');
 
-  indices.push(text.length);
-  const chunks = [];
-  for (let i = 0; i < indices.length - 1; i++) {
-    const seg = text.slice(indices[i], indices[i + 1]).trim();
-    if (seg && seg.length > 15) chunks.push(seg);
+  // Pilko: jokainen DD.MM.YYYY HH:MM(:SS) tai YYYY-MM-DD HH:MM(:SS) aloittaa uuden hälytyksen
+  const splitRe = /(?=(?:\b\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?\b|\b20\d{2}-\d{2}-\d{2}\s+\d{1,2}:\d{2}(?::\d{2})?\b))/g;
+  const idxs = [...text.matchAll(splitRe)].map(m=>m.index);
+  if (!idxs.length) return [];
+
+  idxs.push(text.length);
+  const segments = [];
+  for (let i=0;i<idxs.length-1;i++){
+    const seg = text.slice(idxs[i], idxs[i+1]).trim();
+    if (seg && seg.length>15) segments.push(seg);
   }
 
-  // 4) Muunna korttidataksi + suodata alue/tyyppi
   const items = [];
-  for (const seg of chunks) {
-    const lower = seg.toLowerCase();
+  const seen = new Set();
 
-    // Poimi päivämäärä/kello
-    const { date, time } = extractDT(seg);
+  for (let seg of segments){
+    // Poista alusta irralliset “:05”-palat yms.
+    seg = seg.replace(/(^|\s):\d{2}\b/g, ' ').replace(/\s+/g,' ').trim();
 
-    // Poista segmentin alusta löydetty päivä/kello, jotta jää "kaupunki + laji + kuvaus"
-    let afterDT = seg
-      .replace(/^(?:\d{2}\.\d{2}\.\d{4}|\d{4}-\d{2}-\d{2})\s+\d{1,2}:\d{2}\s*/, '')
-      .trim();
+    // Leikkaa pois häntä “Avaa tehtäväsivu / Lisätty / Silminnäkijähavainto / Tilannehuone.fi …”
+    seg = seg.replace(/(Avaa tehtäväsivu.*|Lisätty.*|Silminnäkijähavainto:.*|Tilannehuone\.fi.*)$/i, '').trim();
 
-    // Otsikko = ensimmäinen lauseke ennen seuraavaa kaksoispistettä/ajatusviivaa, desc = loput
-    let title = afterDT.split(/ - | – | — |: /)[0]?.trim() || afterDT.slice(0, 80);
-    let desc  = afterDT.slice(title.length).trim();
+    // Poimi pvm/aika
+    const {date,time} = extractDT(seg);
+    // Poista alusta pvm+aika tekstistä, jotta jäljelle jää “kaupunki + tapahtumatyyppi + kuvaus”
+    let body = seg.replace(/^(?:\d{2}\.\d{2}\.\d{4}|\d{4}-\d{2}-\d{2})\s+\d{1,2}:\d{2}(?::\d{2})?\s*/, '').trim();
 
+    // Otsikko = ennen ensimmäistä “: ” / ajatusviivaa; kuvaus = loput
+    let title = body.split(/ - | – | — |: /)[0]?.trim() || body.slice(0,80);
+    let desc  = body.slice(title.length).trim();
+
+    const lowerAll = (title + ' ' + desc).toLowerCase();
     const ended = /tilanne\s+ohi/i.test(seg) ? 'Tilanne ohi' : '';
-    const tag   = tagFromText(lower);
+    const tag   = tagFromText(lowerAll);
 
     // Suodata alue & tyyppi
-    if (!areaHit(lower) || !typeHit(lower)) continue;
+    if (!areaHit(lowerAll) || !typeHit(lowerAll)) continue;
+
+    const key = `${date}|${time}|${title}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
 
     items.push({
       title,
       desc,
-      meta: [date, time].filter(Boolean).join(' '),
+      meta: [date,time].filter(Boolean).join(' '),
       tag,
-      ended,
-      key: `${date}|${time}|${title}` // duplikaattisuodatus
+      ended
     });
   }
 
-  // 5) Poista duplikaatit
-  const seen = new Set();
-  return items.filter(it => (seen.has(it.key) ? false : (seen.add(it.key), true)));
+  return items;
 }
+
 
 /* --- KORVAA TÄMÄLLÄ: Tilannehuoneen lataus/render --- */
 async function loadTilannehuone(){
@@ -645,4 +661,5 @@ init();
 </script>
 </body>
 </html>
+
 
