@@ -2,7 +2,7 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8" />
-<title>Aulan näyttö – Tapahtumat • Sää • Liikenne</title>
+<title>Aulan näyttö – Tapahtumat • Sää • Hälytykset</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
   :root{
@@ -10,7 +10,7 @@
     --panel-pad: 16px;
     --header-h: 64px;
     --accent: #007b83;         /* yhtenäinen tehosteväri */
-    --slide-time-ms: 20000;    /* 20 s per näkymä */
+    --slide-time-ms: 20000;    /* 20 s per dia */
   }
   html,body{
     margin:0;height:100vh;width:100vw;background:#e9eef3;color:#111;
@@ -42,7 +42,7 @@
     -webkit-overflow-scrolling:auto;
   }
 
-  /* ======= TAPAHTUMAT ======= */
+  /* ======= TAPAHTUMAT (Nimenhuuto ICS) ======= */
   .events .slide-header{background:var(--accent)}
   .events-list{display:grid;gap:12px}
   .event-card{
@@ -55,8 +55,8 @@
   .event-title{font-weight:800;font-size:1.18rem;word-break:break-word}
   .event-description{margin-top:6px;color:#333;font-size:1.02rem}
 
-  /* 1920×1080: ~5 korttia ilman scrollia (desktop) */
   @media (min-width: 1025px){
+    /* 1920×1080: ~5 korttia ilman scrollia (desktop) */
     .events-list{grid-auto-rows:minmax(0,1fr)}
     .event-card{padding:14px 16px}
     .event-title{font-size:1.22rem}
@@ -83,7 +83,6 @@
   .p-fc   {grid-area: fc}
   .p-warn {grid-area: warn}
 
-  /* Sääkortti */
   .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:10px}
   .w-city{font-size:1.2rem;font-weight:900}
   .w-temp{font-size:2.2rem;font-weight:900}
@@ -92,14 +91,12 @@
   .w-icon{font-size:1.6rem;margin-left:6px}
   .muted{opacity:.7}
 
-  /* Ennuste (kompakti) */
   .forecast{display:grid;gap:10px;grid-template-columns:repeat(6,1fr)}
   .fc-item{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 6px rgba(0,0,0,.12);text-align:center}
   .fc-time{font-weight:800;margin-bottom:4px}
   .fc-temp{font-size:1.05rem;font-weight:900}
   .fc-sub{font-size:.92rem;color:#333;margin-top:2px}
 
-  /* Varoitukset – määrä rajataan JS:ssä */
   .warn-list{display:grid;gap:10px}
   .warn-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;grid-template-columns:28px 1fr;gap:10px}
   .warn-icon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900}
@@ -111,47 +108,18 @@
   .lvl-orange .warn-icon{background:#ff9800}
   .lvl-red    .warn-icon{background:#e53935}
 
-  /* ======= LIIKENNE (Tilannehuone) ======= */
-  .traffic-only .slide-header{background:var(--accent)}
-  .traffic-list{display:grid;gap:10px}
-  .traffic-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
-  .t-title{font-weight:800;margin-bottom:4px}
-  .t-meta{font-size:.95rem;color:#444}
-  .t-desc{margin-top:6px;color:#333}
-  .traffic-item.accident .t-title{color:#c62828}
-  .traffic-item.accident .t-meta{color:#b71c1c}
-  .traffic-item.inactive{background:#eee;color:#555}
+  /* ======= HÄLYTYKSET – TILANNEHUONE ======= */
+  .th .slide-header{background:var(--accent)}
+  .th-list{display:grid;gap:10px}
+  .th-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  .th-item.accident .th-title{color:#c62828}
+  .th-item.fire     .th-title{color:#e65100}
+  .th-title{font-weight:800;margin-bottom:4px}
+  .th-meta{font-size:.95rem;color:#444}
+  .th-desc{margin-top:6px;color:#333}
+  .th-badge{display:inline-block;margin-left:8px;background:#eee;border-radius:6px;padding:2px 6px;font-size:.85em;color:#333}
 
-  /* ======= ASSET DIAT (kuva/pdf/html) ======= */
-  .slide.asset .slide-header{ background: var(--accent); }
-  .slide.asset .slide-body{
-    display: grid;
-    place-items: center;
-    overflow: hidden;             /* desktop: ei scrollia */
-    background: #000;             /* parempi tausta kuville/pdf:lle */
-  }
-  .asset-wrap{
-    width: 100%;
-    height: 100%;
-    display: grid;
-    place-items: center;
-    background: #000;
-  }
-  .asset-wrap img{
-    max-width: 100%;
-    max-height: 100%;
-    height: auto;
-    object-fit: contain;
-    background: #000;
-  }
-  .asset-wrap iframe{
-    width: 100%;
-    height: 100%;
-    border: 0;
-    background: #fff;
-  }
-
-  /* ======= MOBIILI / TABLET ======= */
+  /* MOBIILI / TABLET: salli scroll */
   @media (max-width: 1024px){
     #clock{display:none}
     .slide-body{
@@ -162,10 +130,6 @@
     }
     .forecast{grid-template-columns:repeat(3,1fr)}
     .wx-grid{height:auto; max-width:none}
-    .slide.asset .slide-body{
-      overflow:auto;
-      -webkit-overflow-scrolling:touch;
-    }
   }
 </style>
 </head>
@@ -217,12 +181,12 @@
     </div>
   </section>
 
-  <!-- 3) LIIKENNE / HÄLYTYKSET (Tilannehuone) -->
-  <section class="slide traffic-only" id="slide-traffic" aria-label="Hälytykset (Tilannehuone)">
-    <div class="slide-header">Hälytykset – Keski-Uusimaa + Vantaa</div>
+  <!-- 3) HÄLYTYKSET – TILANNEHUONE -->
+  <section class="slide th" id="slide-th" aria-label="Hälytykset – Tilannehuone">
+    <div class="slide-header">Hälytykset – Tilannehuone (Keski-Uusimaa + Vantaa)</div>
     <div class="slide-body">
-      <div id="traffic-list" class="traffic-list">
-        <div class="traffic-item"><div class="t-title">Ladataan hälytystietoja…</div></div>
+      <div id="th-list" class="th-list">
+        <div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div>
       </div>
     </div>
   </section>
@@ -231,12 +195,13 @@
 <!-- ical.js tapahtumille -->
 <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
-/* ===================== YLEISET ===================== */
-const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← VAIHDA omaan Worker-osoitteeseesi
-const SLIDES = ['slide-events','slide-wx','slide-traffic'];  // 3 diaa + mahdolliset asset-diat
+/* ===================== KONFFIT ===================== */
+const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';  // ← Cloudflare Worker -proxy (sama jota olet jo käyttänyt)
+const SLIDES = ['slide-events','slide-wx','slide-th'];
 let   slideIndex = 0;
 const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
 
+/* ===================== KELLO + DIAKIERRÄTYS ===================== */
 function tickClock(){
   const now = new Date();
   const el = document.getElementById('clock');
@@ -251,9 +216,7 @@ setInterval(tickClock, 1000); tickClock();
 function showSlide(i){
   SLIDES.forEach((id,idx)=>{
     const el = document.getElementById(id);
-    if (el) {
-      if (idx===i){ el.classList.add('active'); } else { el.classList.remove('active'); }
-    }
+    if (el) { (idx===i) ? el.classList.add('active') : el.classList.remove('active'); }
   });
 }
 let autoTimer = setInterval(()=>{
@@ -261,57 +224,38 @@ let autoTimer = setInterval(()=>{
   showSlide(slideIndex);
 }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
 
-/* Swipe-eleet */
+/* Kevyt swipe */
 (function enableSwipe(){
   const container = document.getElementById('slides');
   if (!container) return;
-
-  let touchStartX = 0, touchStartY = 0;
-  let touchMoved = false;
-  let scrolling = false;
-  const H_THRESHOLD = 50;
-  const V_TOLERANCE = 30;
-
-  container.addEventListener('touchstart', (e)=>{
-    if (!e.touches || e.touches.length !== 1) return;
-    const t = e.touches[0];
-    touchStartX = t.clientX;
-    touchStartY = t.clientY;
-    touchMoved = false;
-    scrolling = false;
+  let sx=0, sy=0, moved=false, scrolling=false;
+  container.addEventListener('touchstart', e=>{
+    if (!e.touches || e.touches.length!==1) return;
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY; moved=false; scrolling=false;
   }, {passive:true});
-
-  container.addEventListener('touchmove', (e)=>{
-    if (!e.touches || e.touches.length !== 1) return;
-    const t = e.touches[0];
-    const dx = t.clientX - touchStartX;
-    const dy = t.clientY - touchStartY;
-    if (Math.abs(dy) > V_TOLERANCE) { scrolling = true; return; }
-    if (Math.abs(dx) > 5) touchMoved = true;
+  container.addEventListener('touchmove', e=>{
+    if (!e.touches || e.touches.length!==1) return;
+    const dx=e.touches[0].clientX-sx, dy=e.touches[0].clientY-sy;
+    if (Math.abs(dy)>30){ scrolling=true; return; }
+    if (Math.abs(dx)>5) moved=true;
   }, {passive:true});
-
-  container.addEventListener('touchend', (e)=>{
-    if (scrolling || !touchMoved) return;
-    const t = e.changedTouches && e.changedTouches[0];
-    if (!t) return;
-    const dx = t.clientX - touchStartX;
-    if (Math.abs(dx) > H_THRESHOLD) {
+  container.addEventListener('touchend', e=>{
+    if (scrolling||!moved) return;
+    const dx=e.changedTouches[0].clientX-sx;
+    if (Math.abs(dx)>50){
       clearInterval(autoTimer);
-      if (dx < 0) slideIndex = (slideIndex + 1) % SLIDES.length;
-      else slideIndex = (slideIndex - 1 + SLIDES.length) % SLIDES.length;
+      if (dx<0) slideIndex=(slideIndex+1)%SLIDES.length; else slideIndex=(slideIndex-1+SLIDES.length)%SLIDES.length;
       showSlide(slideIndex);
-      autoTimer = setInterval(()=>{
-        slideIndex = (slideIndex + 1) % SLIDES.length;
-        showSlide(slideIndex);
-      }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
+      autoTimer=setInterval(()=>{ slideIndex=(slideIndex+1)%SLIDES.length; showSlide(slideIndex); },
+        parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
     }
   }, {passive:true});
 })();
 
-/* Pienet apurit */
+/* ===================== APURI ===================== */
 async function fetchWithTimeout(url, ms=12000, opts={}){
-  const ctrl = new AbortController(); const id = setTimeout(()=>ctrl.abort(), ms);
-  try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store', ...opts}); clearTimeout(id); return r; }
+  const ctrl=new AbortController(); const id=setTimeout(()=>ctrl.abort(), ms);
+  try{ const r=await fetch(url, {signal:ctrl.signal, cache:'no-store', ...opts}); clearTimeout(id); return r; }
   catch(e){ clearTimeout(id); throw e; }
 }
 function stripLinks(html) {
@@ -398,7 +342,7 @@ function renderEvents(containerId, payload) {
   });
 }
 
-/* ===================== SÄÄ (FMI WFS – HARMONIE/TVP) ===================== */
+/* ===================== SÄÄ (FMI WFS – HARMONIE/TVP) + VAROITUKSET (FMI CAP RSS) ===================== */
 const KL = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 };
 
 function wxEmoji(symbol){
@@ -503,7 +447,6 @@ async function loadFmiWeather(){
   }
 }
 
-/* ===================== VAROITUKSET (FMI CAP RSS) ===================== */
 const FMI_RSS_FI = 'https://alerts.fmi.fi/cap/feed/rss_fi-FI.rss';
 function sevClassFromText(txt){
   const t=(txt||'').toLowerCase();
@@ -565,340 +508,125 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== HÄLYTYKSET – Tilannehuone (HTML-scrape) ===================== */
-/* Huom: ei ole virallinen API; haetaan pääsivu ja suodatetaan tekstistä. */
+/* ===================== TILANNEHUONE – HTML-scrape ===================== */
+/* Hae listanäkymä (ilman karttoja) ja pura yksittäisiksi tapahtumiksi. */
+const TH_URL = 'https://www.tilannehuone.fi/halytys.php'; // päälista
+
 const REGION_NAMES = [
-  'Nurmijärvi','Järvenpää','Kerava','Tuusula','Hyvinkää','Mäntsälä','Sipoo','Pornainen',
-  'Vantaa','Klaukkala','Keski-Uusimaa','Pääkaupunkiseutu','Uusimaa'
+  'Nurmijärvi','Järvenpää','Kerava','Tuusula','Hyvinkää','Mäntsälä','Pornainen',
+  'Klaukkala','Vantaa','Keski-Uusimaa'
 ];
 const INCIDENT_KEYWORDS = [
   'tieliikenneonnettomuus','liikenneonnettomuus','kolari',
   'tulipalo','rakennuspalo','maastopalo','autopalo','ajoneuvopalo'
 ];
 
-function looksRelevant(text){
-  const t = (text||'').toLowerCase();
-  const areaHit = REGION_NAMES.some(n => t.includes(n.toLowerCase()));
-  const typeHit = INCIDENT_KEYWORDS.some(k => t.includes(k));
-  return areaHit && typeHit;
+function areaHit(txt){ return REGION_NAMES.some(n => txt.includes(n.toLowerCase())); }
+function typeHit(txt){ return INCIDENT_KEYWORDS.some(k => txt.includes(k)); }
+function tagFromText(t){
+  if (t.includes('palo')) return 'fire';
+  if (t.includes('onnettomuus') || t.includes('kolari')) return 'accident';
+  return '';
 }
-function isAccident(text){
-  const t = (text||'').toLowerCase();
-  return t.includes('onnettomuus') || t.includes('kolari');
+function extractDT(txt){
+  const d1 = txt.match(/\b20\d{2}-\d{2}-\d{2}\b/);           // 2025-08-29
+  const d2 = txt.match(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/);       // 29.8.2025
+  const t1 = txt.match(/\b\d{1,2}:\d{2}\b/);                 // 14:05
+  return { date: d1?.[0] || d2?.[0] || '', time: t1?.[0] || '' };
 }
-function extractTimeAndDate(text){
-  // Etsi 2025-08-28 tai 28.8.2025 ja kellonaika 12:34
-  const d1 = text.match(/\b20\d{2}-\d{2}-\d{2}\b/);
-  const d2 = text.match(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/);
-  const t1 = text.match(/\b\d{1,2}:\d{2}\b/);
-  return {
-    date: d1?.[0] || d2?.[0] || '',
-    time: t1?.[0] || ''
-  };
-}
-function htmlToText(html){
-  const tmp = document.createElement('div'); tmp.innerHTML = html;
-  return tmp.textContent || tmp.innerText || '';
+
+function parseTilannehuoneHTML(rawHtml){
+  // 1) Poimi näkyvä teksti
+  const tmp = document.createElement('div'); tmp.innerHTML = rawHtml;
+  const text = (tmp.textContent || tmp.innerText || '').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+
+  // 2) Yritä pilkkoa rivikohtaisiksi tapauksiksi:
+  //    – lisätään erotin jokaisen "HH:MM" kohdan eteen
+  const withDelims = text.replace(/(\b\d{1,2}:\d{2}\b)/g, '\n$1 ');
+  let parts = withDelims.split('\n').map(s=>s.trim()).filter(s=>s.length>10);
+
+  // 3) Fallback: jos liian vähän osumia, yritä pilkkoa linkkitekstien perusteella
+  if (parts.length < 3){
+    const links = Array.from(tmp.querySelectorAll('a'));
+    const lines = links.map(a=>a.textContent.trim()).filter(s=>s.length>10);
+    if (lines.length) parts = lines;
+  }
+
+  // 4) Map → objektilista
+  const items = parts.map(s=>{
+    const lower = s.toLowerCase();
+    const tag = tagFromText(lower);
+    const {date, time} = extractDT(s);
+    const ended = /tilanne\s+ohi/i.test(s) ? 'Tilanne ohi' : '';
+    // Otsikko: hae ensimmäinen lauseke ennen pitkää satunnaista sepustusta
+    const title = s.split(/ - | – | — | \| /)[0].trim();
+    // Kuvaus: loput
+    const desc  = s.slice(title.length).trim();
+    const meta  = [date,time].filter(Boolean).join(' ');
+    return { title, desc, meta, tag, raw:s };
+  });
+
+  // 5) Suodata alue + tyyppi
+  const filtered = items.filter(it=>{
+    const t = it.raw.toLowerCase();
+    return areaHit(t) && typeHit(t);
+  });
+
+  // Poista duplikaatit (sama otsikko+meta)
+  const seen = new Set();
+  const unique = filtered.filter(it=>{
+    const key = it.title + '|' + it.meta;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+
+  return unique;
 }
 
 async function loadTilannehuone(){
-  const box = document.getElementById('traffic-list');
-  if (!box) return;
-  box.innerHTML = '<div class="traffic-item"><div class="t-title">Ladataan hälytystietoja…</div></div>';
-
+  const list = document.getElementById('th-list');
+  list.innerHTML = '<div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div>';
   try{
-    const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
+    const url = PROXY + encodeURIComponent(TH_URL) + '&_=' + Date.now();
     const r = await fetchWithTimeout(url, 15000);
-    if (!r.ok) throw new Error('Tilannehuone HTTP '+r.status);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const html = await r.text();
 
-    // Yritetään parsiä listaelementtejä; fallback: pätkitään <li> ja <div class="...">.
-    let items = [];
-
-    // 1) Yritä DOMParser
-    try{
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      // Etsi listakohdat – varmuuden vuoksi laajalla haulla
-      const nodes = doc.querySelectorAll('li, .alert, .list-group-item, .td, .row, .container *');
-      nodes.forEach(n=>{
-        const txt = n.textContent?.trim() || '';
-        if (txt.length > 20 && looksRelevant(txt)) {
-          items.push(txt);
-        }
-      });
-    }catch(_){}
-
-    // 2) Jos ei tullut mitään, hajota raakatekstinä
+    const items = parseTilannehuoneHTML(html);
     if (!items.length){
-      const parts = html.split(/<\/li>|<\/div>/i);
-      parts.forEach(p=>{
-        const txt = htmlToText(p).replace(/\s+/g,' ').trim();
-        if (txt.length > 20 && looksRelevant(txt)){
-          items.push(txt);
-        }
-      });
-    }
-
-    // Poista duplikaatit
-    items = Array.from(new Set(items));
-
-    // Rakennetaan kortit
-    if (!items.length){
-      box.innerHTML = '<div class="traffic-item"><div class="t-title">Ei ajankohtaisia hälytyksiä alueella</div></div>';
+      list.innerHTML = '<div class="th-item"><div class="th-title">Ei ajankohtaisia hälytyksiä alueella</div></div>';
       return;
     }
 
-    // Järjestä karkeasti: onnettomuudet ensin
-    items.sort((a,b)=>{
-      const aa = isAccident(a) ? 0 : 1;
-      const bb = isAccident(b) ? 0 : 1;
-      if (aa !== bb) return aa - bb;
-      return b.length - a.length; // pidempi ensin
-    });
-
-    const htmlList = items.slice(0, IS_MOBILE ? 40 : 30).map(txt=>{
-      const {date,time} = extractTimeAndDate(txt);
-      const title = txt.split('-')[0].trim(); // usein alku on tyyppi
-      const body  = txt.replace(title,'').trim();
-      const acc   = isAccident(txt);
-      return `<div class="traffic-item${acc?' accident':''}">
-        <div class="t-title">${title}</div>
-        <div class="t-meta">${[date,time].filter(Boolean).join(' • ')}</div>
-        <div class="t-desc">${body}</div>
+    list.innerHTML = items.slice(0, IS_MOBILE ? 40 : 30).map(it=>{
+      return `<div class="th-item ${it.tag}">
+        <div class="th-title">${it.title}${/tilanne\s+ohi/i.test(it.raw) ? `<span class="th-badge">Tilanne ohi</span>`:''}</div>
+        ${it.meta ? `<div class="th-meta">${it.meta}</div>`:''}
+        ${it.desc ? `<div class="th-desc">${it.desc}</div>`:''}
       </div>`;
     }).join('');
 
-    box.innerHTML = htmlList;
-
   }catch(e){
-    console.warn('Tilannehuone epäonnistui, kokeillaan Digitraffic-fallbackia', e);
-    await loadTrafficFallbackDigitraffic();
+    console.error('Tilannehuone haku epäonnistui:', e);
+    list.innerHTML = '<div class="th-item"><div class="th-title">Hälytystietoja ei voitu hakea</div></div>';
   }
-}
-
-/* Fallback: Digitraffic (jos Tilannehuone ei onnistu) */
-const BBOX = { latMin: 60.20, latMax: 60.65, lonMin: 24.40, lonMax: 25.30 };
-const TRAFFIC_WINDOW_H_START      = 36;
-const TRAFFIC_WINDOW_H_AFTER_END  = 18;
-
-function inBboxCoord(lat, lon) {
-  return lat >= BBOX.latMin && lat <= BBOX.latMax && lon >= BBOX.lonMin && lon <= BBOX.lonMax;
-}
-function geomInBbox(geometry){
-  if (!geometry) return false;
-  const type = geometry.type;
-  const coords = geometry.coordinates;
-  if (!coords) return false;
-  try {
-    if (type === 'Point') {
-      const [lon,lat] = coords; return inBboxCoord(lat,lon);
-    }
-    if (type === 'LineString') {
-      return coords.some(([lon,lat]) => inBboxCoord(lat,lon));
-    }
-    if (type === 'Polygon') {
-      return coords.flat().some(([lon,lat]) => inBboxCoord(lat,lon));
-    }
-    if (type === 'MultiPolygon') {
-      return coords.flat(2).some(([lon,lat]) => inBboxCoord(lat,lon));
-    }
-  } catch(_) {}
-  return false;
-}
-function extractAreaStrings(feature){
-  const out = [];
-  const anns = feature?.properties?.announcements || [];
-  for (const a of anns){
-    const areaArr = a?.locationDetails?.areaLocation?.areas || [];
-    areaArr.forEach(ar => { if (ar?.name) out.push(ar.name); });
-    const muni = a?.locationDetails?.roadAddressLocation?.roadAddress?.municipality;
-    if (muni) out.push(muni);
-    const road = a?.locationDetails?.roadAddressLocation?.roadAddress?.roadNumber;
-    if (road) out.push(`VT ${road}`);
-  }
-  return out.map(s => (s||'').toString().toLowerCase());
-}
-function isInTargetArea(feature){
-  const hay = extractAreaStrings(feature).join(' ');
-  const textHit = REGION_NAMES.some(n => hay.includes(n.toLowerCase()));
-  const geomHit = geomInBbox(feature.geometry);
-  return textHit || geomHit;
-}
-function isAccidentFeature(feature){
-  const txt = JSON.stringify(feature?.properties || {}).toLowerCase();
-  return txt.includes('onnettomu') || txt.includes('kolari') || txt.includes('liikenneonnettomuus') || txt.includes('tulipalo') || txt.includes('palo ');
-}
-function extractTimes(feature){
-  const p = feature?.properties || {};
-  const anns = p.announcements || [];
-  const a0 = anns[0] || {};
-  const tsStart = a0.releaseTime || a0.publicationTime || p.publicationTime || p.releaseTime;
-  const tsEnd   = p.situationEnded || a0.situationEnded || null;
-  return {
-    startISO: tsStart || null,
-    endISO: tsEnd || null,
-    startText: tsStart ? new Date(tsStart).toLocaleString('fi-FI') : '',
-    endText: tsEnd   ? new Date(tsEnd).toLocaleString('fi-FI')   : ''
-  };
-}
-function isFresh(feature){
-  const p = feature?.properties || {};
-  const { startISO, endISO } = extractTimes(feature);
-  const now = Date.now();
-  const startOk = startISO ? (now - new Date(startISO).getTime()) <= TRAFFIC_WINDOW_H_START * 3600000 : true;
-  const endedRecently = endISO ? (now - new Date(endISO).getTime()) <= TRAFFIC_WINDOW_H_AFTER_END * 3600000 : false;
-  const active = (p.status || '').toUpperCase() === 'ACTIVE';
-  return active || endedRecently || startOk;
-}
-function toTrafficItem(feature){
-  const p = feature?.properties || {};
-  const anns = p.announcements || [];
-  const a0 = anns[0] || {};
-  const { startText, endText } = extractTimes(feature);
-  const title = a0.title || p.title || 'Liikennetiedote';
-  const desc  = a0.comment || a0.description || p.description || '';
-  const muni = a0?.locationDetails?.roadAddressLocation?.roadAddress?.municipality
-            || a0?.locationDetails?.areaLocation?.areas?.[0]?.name || '';
-  const roadNo = a0?.locationDetails?.roadAddressLocation?.roadAddress?.roadNumber;
-  const where = [muni, roadNo ? `VT ${roadNo}` : ''].filter(Boolean).join(' • ');
-  const status = (p.status || '').toUpperCase();
-  const accident = isAccidentFeature(feature);
-  const sortTs = (a0.releaseTime || a0.publicationTime || p.publicationTime || p.releaseTime) || null;
-  const sortVal = sortTs ? new Date(sortTs).getTime() : 0;
-  return { title, desc, where, status, startText, endText, accident, sortVal };
-}
-async function loadTrafficFallbackDigitraffic(){
-  const box = document.getElementById('traffic-list');
-  if (!box) return;
-  box.innerHTML = '<div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>';
-  try{
-    const apiGeom = 'https://tie.digitraffic.fi/api/traffic-message/v1/messages?includeAreaGeometry=true';
-    const url = PROXY + encodeURIComponent(apiGeom) + '&_=' + Date.now();
-    const r = await fetchWithTimeout(url, 15000);
-    const text = await r.text();
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    if (text.trim().startsWith('<')) throw new Error('Proxy/HTML-virhe');
-    const data = JSON.parse(text);
-    const features = Array.isArray(data?.features) ? data.features : [];
-
-    let list = features.filter(isInTargetArea).filter(isFresh);
-    list.sort((a,b)=>{
-      const ta = toTrafficItem(a).sortVal;
-      const tb = toTrafficItem(b).sortVal;
-      return tb - ta;
-    });
-
-    const html = list.slice(0, IS_MOBILE ? 40 : 30).map(f=>{
-      const it = toTrafficItem(f);
-      const inactive = it.status !== 'ACTIVE';
-      return `<div class="traffic-item card${inactive ? ' inactive' : ''}${it.accident ? ' accident' : ''}">
-        <div class="t-title">${it.title}</div>
-        <div class="t-meta">${[it.where, it.startText].filter(Boolean).join(' • ')}</div>
-        ${it.desc ? `<div class="t-desc">${it.desc}</div>` : ''}
-        ${inactive ? `<div class="t-meta"><strong>Tilanne ohi</strong>${it.endText ? ` • ${it.endText}`:''}</div>` : ''}
-      </div>`;
-    }).join('');
-    box.innerHTML = html || '<div class="traffic-item"><div class="t-title">Ei ajankohtaisia tiedotteita alueella</div></div>';
-  }catch(e){
-    console.error('Digitraffic fallback epäonnistui:', e);
-    box.innerHTML = '<div class="traffic-item"><div class="t-title">Liikennetietoja ei voitu hakea</div></div>';
-  }
-}
-
-/* ===================== ASSET-DIAT (kuva/pdf/html) ===================== */
-const CUSTOM_ASSETS = [
-  /* Esimerkit: jos näitä ei ole repossa, ne ohitetaan automaattisesti (exist-check). */
-  { type: 'img',  title: 'Infokuva',    src: './info.jpg' },
-  { type: 'pdf',  title: 'Ohjeistus',   src: './ohje.pdf#view=FitH&toolbar=0&navpanes=0' },
-  { type: 'page', title: 'Tiedotesivu', src: './tiedote.html' }
-];
-
-async function exists(url){
-  try{
-    const r = await fetch(url, { method:'HEAD', cache:'no-store' });
-    if (r.ok) return true;
-    const g = await fetchWithTimeout(url, 6000, { method:'GET' });
-    return g.ok;
-  }catch{ return false; }
-}
-async function filterExistingAssets(list){
-  const out = [];
-  for (const a of list){
-    if (!a || !a.src) continue;
-    try{
-      const ok = await exists(a.src);
-      if (ok) out.push(a);
-    }catch(_){}
-  }
-  return out;
-}
-async function addAssetSlides(){
-  const assets = await filterExistingAssets(CUSTOM_ASSETS);
-  if (!assets.length) return;
-
-  const root = document.querySelector('.slides');
-  if (!root) return;
-
-  assets.forEach((asset, idx) => {
-    const id = `slide-asset-${idx+1}`;
-    const sec = document.createElement('section');
-    sec.className = 'slide asset';
-    sec.id = id;
-    sec.setAttribute('aria-label', asset.title || 'Dia');
-
-    const header = document.createElement('div');
-    header.className = 'slide-header';
-    header.textContent = asset.title || 'Dia';
-
-    const body = document.createElement('div');
-    body.className = 'slide-body';
-
-    const wrap = document.createElement('div');
-    wrap.className = 'asset-wrap';
-
-    const type = (asset.type || '').toLowerCase();
-    if (type === 'img') {
-      const img = document.createElement('img');
-      img.src = asset.src;
-      img.alt = asset.title || '';
-      wrap.appendChild(img);
-    } else if (type === 'pdf') {
-      const iframe = document.createElement('iframe');
-      iframe.src = asset.src;
-      wrap.appendChild(iframe);
-    } else {
-      const iframe = document.createElement('iframe');
-      iframe.src = asset.src;
-      wrap.appendChild(iframe);
-    }
-
-    body.appendChild(wrap);
-    sec.appendChild(header);
-    sec.appendChild(body);
-    root.appendChild(sec);
-
-    SLIDES.push(id); // lisää kiertoon
-  });
 }
 
 /* ===================== INIT + PÄIVITYKSET ===================== */
 async function init(){
-  // Lisää mahdolliset asset-diat (vain jos tiedostot löytyvät)
-  await addAssetSlides();
-
   // Tapahtumat
   const ev = await loadICS(ICS_URL());   renderEvents('miehisto-events', ev);
   // Sää + varoitukset
   await loadFmiWeather();
   await loadWarnings();
-  // Hälytykset (Tilannehuone)
+  // Tilannehuone
   await loadTilannehuone();
 
-  // Päivityssyklit
+  // Päivitykset
   setInterval(async ()=>{ const e=await loadICS(ICS_URL()); renderEvents('miehisto-events', e); }, 5*60*1000);
   setInterval(loadFmiWeather,  10*60*1000);
   setInterval(loadWarnings,    10*60*1000);
-  setInterval(loadTilannehuone, 5*60*1000);
+  setInterval(loadTilannehuone,5*60*1000);
 }
 init();
 </script>
