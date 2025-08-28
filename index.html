@@ -522,70 +522,81 @@ function extractDT(txt){
   const t1 = txt.match(/\b\d{1,2}:\d{2}\b/);
   return { date: d1?.[0] || d2?.[0] || '', time: t1?.[0] || '' };
 }
-
+  
 function parseTilannehuoneHTML(rawHtml){
-  // Lataa HTML temppiin ja siivoa aggressiivisesti
+  // 1) Puhdistus
   const tmp = document.createElement('div');
   tmp.innerHTML = rawHtml;
+  tmp.querySelectorAll(
+    'script, style, iframe, noscript, .lwhbim, .ad, .ad-container, [id*="ads"], [class*="ad-"], [id*="cookie"], [class*="cookie"]'
+  ).forEach(el => el.remove());
 
-  // Poista skriptit, tyylit, iframet, noscript, sekä tyypilliset mainos/vo-näyttöelementit
-  tmp.querySelectorAll('script, style, iframe, noscript, .lwhbim, .ad, .ad-container, [id*="ads"], [class*="ad-"], [id*="cookie"], [class*="cookie"]').forEach(el=>el.remove());
+  // 2) Poimi pääsisällön pelkkä teksti
+  const host = tmp.querySelector('#cnt_lista') || tmp.body || tmp;
+  let text = (host.textContent || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  // Poimitaan tekstikappaleita – Tilannehuone käyttää mm. .pfade ja .plink,
-  // mutta lisäksi otetaan mukaan puhtaat tekstisolut joissa on hälytystekstiä.
-  const blocks = [];
-  const pick = el => {
-    const t = el.textContent.replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
-    if (t.length >= 20) blocks.push(t);
-  };
-  tmp.querySelectorAll('.pfade, .plink, .uutinen, .uutiset, .lista, .list, .content, #cnt_lista, #content').forEach(pick);
+  if (!text) return [];
 
-  // Fallback: jos ei löytynyt erikoisluokkia, kaiva kaikki <p> ja <li>
-  if (blocks.length < 5) {
-    tmp.querySelectorAll('p, li').forEach(pick);
+  // 3) Pilko yksittäisiin hälytyksiin:
+  //    Käytetään lookaheadia, joka osuu jokaiseen "DD.MM.YYYY HH:MM" TAI "YYYY-MM-DD HH:MM"
+  const splitRe = /(?=(?:\b\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}\b|\b20\d{2}-\d{2}-\d{2}\s+\d{1,2}:\d{2}\b))/g;
+  const indices = [...text.matchAll(splitRe)].map(m => m.index);
+  if (indices.length === 0) return [];
+
+  indices.push(text.length);
+  const chunks = [];
+  for (let i = 0; i < indices.length - 1; i++) {
+    const seg = text.slice(indices[i], indices[i + 1]).trim();
+    if (seg && seg.length > 15) chunks.push(seg);
   }
 
-  // Pilko riveiksi ja jalosta korteiksi
+  // 4) Muunna korttidataksi + suodata alue/tyyppi
   const items = [];
-  blocks.forEach(text=>{
-    // Karsi toistuvat UI-tekstit (“Juuri nyt”, “Facebook”, ym.)
-    if (/Juuri nyt|Facebook|Rekisteröidy|Kirjaudu|Haku|Kartta/i.test(text)) return;
+  for (const seg of chunks) {
+    const lower = seg.toLowerCase();
 
-    // erottele ensimmäinen osa otsikoksi (ennen ensimmäistä “: ” tai “ - ”)
-    const segs = text.split(/ - | – | — |: /);
-    const title = segs[0]?.trim() || '';
-    const rest  = text.slice(title.length).trim();
-    if (title.length < 5) return;
+    // Poimi päivämäärä/kello
+    const { date, time } = extractDT(seg);
 
-    const lowerAll = (title + ' ' + rest).toLowerCase();
-    const {date, time} = extractDT(text);
-    const ended = /tilanne\s+ohi/i.test(text) ? 'Tilanne ohi' : '';
-    const tag = tagFromText(lowerAll);
+    // Poista segmentin alusta löydetty päivä/kello, jotta jää "kaupunki + laji + kuvaus"
+    let afterDT = seg
+      .replace(/^(?:\d{2}\.\d{2}\.\d{4}|\d{4}-\d{2}-\d{2})\s+\d{1,2}:\d{2}\s*/, '')
+      .trim();
+
+    // Otsikko = ensimmäinen lauseke ennen seuraavaa kaksoispistettä/ajatusviivaa, desc = loput
+    let title = afterDT.split(/ - | – | — |: /)[0]?.trim() || afterDT.slice(0, 80);
+    let desc  = afterDT.slice(title.length).trim();
+
+    const ended = /tilanne\s+ohi/i.test(seg) ? 'Tilanne ohi' : '';
+    const tag   = tagFromText(lower);
 
     // Suodata alue & tyyppi
-    if (!areaHit(lowerAll) || !typeHit(lowerAll)) return;
+    if (!areaHit(lower) || !typeHit(lower)) continue;
 
     items.push({
       title,
-      desc: rest,
-      meta: [date,time].filter(Boolean).join(' '),
+      desc,
+      meta: [date, time].filter(Boolean).join(' '),
       tag,
       ended,
-      key: title + '|' + date + '|' + time
+      key: `${date}|${time}|${title}` // duplikaattisuodatus
     });
-  });
+  }
 
-  // Poista duplikaatit
+  // 5) Poista duplikaatit
   const seen = new Set();
-  const unique = items.filter(it => (seen.has(it.key) ? false : (seen.add(it.key), true)));
-  return unique;
+  return items.filter(it => (seen.has(it.key) ? false : (seen.add(it.key), true)));
 }
 
+/* --- KORVAA TÄMÄLLÄ: Tilannehuoneen lataus/render --- */
 async function loadTilannehuone(){
   const list = document.getElementById('th-list');
   list.innerHTML = '<div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div>';
   try{
-    const url = PROXY + encodeURIComponent(TH_URL) + '&_=' + Date.now();
+    const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
     const r = await fetchWithTimeout(url, 15000);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const html = await r.text();
@@ -597,19 +608,17 @@ async function loadTilannehuone(){
       return;
     }
 
-    // Rajaa määrää (mobiilissa enemmän scrollattavaa)
     const maxItems = IS_MOBILE ? 40 : 30;
-    list.innerHTML = items.slice(0, maxItems).map(it=>`
+    list.innerHTML = items.slice(0, maxItems).map(it => `
       <div class="th-item ${it.tag}">
         <div class="th-title">
           ${it.title}
-          ${it.ended ? `<span class="th-badge">${it.ended}</span>`:''}
+          ${it.ended ? `<span class="th-badge">${it.ended}</span>` : ''}
         </div>
-        ${it.meta ? `<div class="th-meta">${it.meta}</div>`:''}
-        ${it.desc ? `<div class="th-desc">${it.desc}</div>`:''}
+        ${it.meta ? `<div class="th-meta">${it.meta}</div>` : ''}
+        ${it.desc ? `<div class="th-desc">${it.desc}</div>` : ''}
       </div>
     `).join('');
-
   }catch(e){
     console.error('Tilannehuone haku epäonnistui:', e);
     list.innerHTML = '<div class="th-item"><div class="th-title">Hälytystietoja ei voitu hakea</div></div>';
@@ -636,3 +645,4 @@ init();
 </script>
 </body>
 </html>
+
