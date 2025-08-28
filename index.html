@@ -6,11 +6,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
   :root{
-    --gap: 16px;
-    --panel-pad: 16px;
-    --header-h: 64px;
-    --accent: #007b83;         /* yhtenäinen tehosteväri */
-    --slide-time-ms: 20000;    /* 20 s per dia */
+    --gap: 10px;
+    --panel-pad: 12px;
+    --header-h: 54px;
+    --accent: #007b83;
+    --slide-time-ms: 20000; /* 20 s / dia */
+    --card-radius: 12px;
+    --shadow: 0 4px 14px rgba(0,0,0,.12);
   }
   html,body{
     margin:0;height:100vh;width:100vw;background:#e9eef3;color:#111;
@@ -19,108 +21,104 @@
     touch-action: manipulation;
   }
   #clock{
-    position:fixed;top:10px;right:16px;font-size:1.1rem;font-weight:700;
-    background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:8px;z-index:10
+    position:fixed;top:8px;right:10px;font-size:.98rem;font-weight:700;
+    background:rgba(0,0,0,.6);color:#fff;padding:5px 8px;border-radius:8px;z-index:10
   }
 
   /* SLIDES */
   .slides{height:100%;width:100%;position:relative}
   .slide{
-    position:absolute;inset:0;background:#fff;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.15);
-    display:grid;grid-template-rows:var(--header-h) 1fr;overflow:hidden;opacity:0;pointer-events:none;transform:scale(.985);
-    transition:opacity .35s ease, transform .35s ease;margin:var(--gap);
+    position:absolute;inset:0;background:#fff;border-radius:14px;box-shadow:var(--shadow);
+    display:grid;grid-template-rows:var(--header-h) 1fr;overflow:hidden;opacity:0;pointer-events:none;transform:scale(.992);
+    transition:opacity .28s ease, transform .28s ease;margin:var(--gap);
     -webkit-tap-highlight-color: transparent;
   }
   .slide.active{opacity:1;pointer-events:auto;transform:scale(1)}
   .slide-header{
-    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.5rem;color:#fff;background:var(--accent);
-    user-select:none;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.28rem;color:#fff;background:var(--accent);
+    user-select:none; letter-spacing:.2px;
   }
   .slide-body{
-    background:#f2f6fa;padding:var(--panel-pad);
-    overflow:hidden;              /* desktop: ei scrollia */
+    background:#f6f9fc;padding:var(--panel-pad);
+    overflow:hidden; /* desktop: ei scrollia */
     -webkit-overflow-scrolling:auto;
   }
 
   /* ======= TAPAHTUMAT (Nimenhuuto ICS) ======= */
-  .events .slide-header{background:var(--accent)}
-  .events-list{display:grid;gap:12px}
+  .events-list{display:grid;gap:10px}
   .event-card{
-    background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);
-    padding:12px 14px
+    background:#fff;border-radius:var(--card-radius);box-shadow:0 1px 6px rgba(0,0,0,.10);
+    padding:10px 12px
   }
   .event-date{
-    font-weight:800;color:#fff;border-radius:8px;display:inline-block;padding:5px 10px;margin-bottom:6px
+    font-weight:800;color:#fff;border-radius:8px;display:inline-block;padding:4px 8px;margin-bottom:6px;
+    font-size:1rem;
   }
-  .event-title{font-weight:800;font-size:1.18rem;word-break:break-word}
-  .event-description{margin-top:6px;color:#333;font-size:1.02rem}
-
-  @media (min-width: 1025px){
-    /* 1920×1080: ~5 korttia ilman scrollia (desktop) */
+  .event-title{font-weight:800;font-size:1.14rem;word-break:break-word;line-height:1.22}
+  .event-description{
+    margin-top:6px;color:#333;font-size:1rem;line-height:1.28;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  @media (min-width:1025px){
     .events-list{grid-auto-rows:minmax(0,1fr)}
-    .event-card{padding:14px 16px}
-    .event-title{font-size:1.22rem}
+    .event-card{padding:12px 14px}
+    .event-title{font-size:1.18rem}
   }
 
   /* ======= SÄÄ + VAROITUKSET ======= */
-  .wx-alerts .slide-header{background:var(--accent)}
   .wx-grid{
     height:100%;
-    max-width:1600px; margin:0 auto;
-    display:grid; gap:16px;
-    grid-template-rows:auto auto 1fr; /* sää, ennuste, varoitukset täyttää lopun */
+    max-width:1500px; margin:0 auto;
+    display:grid; gap:12px;
+    grid-template-rows:auto auto 1fr; /* sää, ennuste, varoitukset */
     grid-template-columns:1fr;
-    grid-template-areas:
-      "wx"
-      "fc"
-      "warn";
+    grid-template-areas: "wx" "fc" "warn";
   }
-  .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
-  .panel-h{height:48px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px;background:var(--accent)}
-  .panel-b{background:#f2f6fa;padding:12px}
+  .panel{background:#fff;border-radius:var(--card-radius);box-shadow:0 1px 6px rgba(0,0,0,.10);overflow:hidden}
+  .panel-h{height:42px;display:flex;align-items:center;gap:8px;font-weight:800;color:#fff;padding:0 10px;background:var(--accent);font-size:1rem}
+  .panel-b{background:#f6f9fc;padding:10px}
 
-  .p-wx   {grid-area: wx}
-  .p-fc   {grid-area: fc}
-  .p-warn {grid-area: warn}
+  .p-wx{grid-area:wx}
+  .p-fc{grid-area:fc}
+  .p-warn{grid-area:warn}
 
-  .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:10px}
-  .w-city{font-size:1.2rem;font-weight:900}
-  .w-temp{font-size:2.2rem;font-weight:900}
-  .w-row{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}
-  .w-badge{background:#eef3f8;border-radius:8px;padding:6px 10px}
-  .w-icon{font-size:1.6rem;margin-left:6px}
+  .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:8px}
+  .w-city{font-size:1.06rem;font-weight:900}
+  .w-temp{font-size:1.9rem;font-weight:900}
+  .w-row{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+  .w-badge{background:#eef3f8;border-radius:8px;padding:5px 8px}
+  .w-icon{font-size:1.4rem;margin-left:4px}
   .muted{opacity:.7}
 
-  .forecast{display:grid;gap:10px;grid-template-columns:repeat(6,1fr)}
-  .fc-item{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 6px rgba(0,0,0,.12);text-align:center}
-  .fc-time{font-weight:800;margin-bottom:4px}
-  .fc-temp{font-size:1.05rem;font-weight:900}
-  .fc-sub{font-size:.92rem;color:#333;margin-top:2px}
+  .forecast{display:grid;gap:8px;grid-template-columns:repeat(6,1fr)}
+  .fc-item{background:#fff;border-radius:10px;padding:8px 10px;box-shadow:0 1px 5px rgba(0,0,0,.10);text-align:center}
+  .fc-time{font-weight:800;margin-bottom:3px}
+  .fc-temp{font-size:1rem;font-weight:900}
+  .fc-sub{font-size:.9rem;color:#333;margin-top:2px}
 
-  .warn-list{display:grid;gap:10px}
-  .warn-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;grid-template-columns:28px 1fr;gap:10px}
-  .warn-icon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900}
-  .warn-content{display:grid;gap:4px}
+  .warn-list{display:grid;gap:8px}
+  .warn-item{background:#fff;border-radius:10px;padding:8px 10px;box-shadow:0 1px 6px rgba(0,0,0,.10);display:grid;grid-template-columns:24px 1fr;gap:8px}
+  .warn-icon{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900;font-size:.9rem}
+  .warn-content{display:grid;gap:3px}
   .w-title{font-weight:800}
-  .w-when{font-size:.95rem;opacity:.8}
-  .w-desc{font-size:.98rem}
+  .w-when{font-size:.9rem;opacity:.8}
+  .w-desc{font-size:.94rem;line-height:1.28;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .lvl-yellow .warn-icon{background:#f2c744;color:#1d1d1f}
   .lvl-orange .warn-icon{background:#ff9800}
   .lvl-red    .warn-icon{background:#e53935}
 
   /* ======= HÄLYTYKSET – TILANNEHUONE ======= */
-  .th .slide-header{background:var(--accent)}
   .th-list{display:grid;gap:10px}
-  .th-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  .th-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 1px 6px rgba(0,0,0,.10)}
   .th-item.accident .th-title{color:#c62828}
   .th-item.fire     .th-title{color:#e65100}
-  .th-title{font-weight:800;margin-bottom:4px}
-  .th-meta{font-size:.95rem;color:#444}
-  .th-desc{margin-top:6px;color:#333}
-  .th-badge{display:inline-block;margin-left:8px;background:#eee;border-radius:6px;padding:2px 6px;font-size:.85em;color:#333}
+  .th-title{font-weight:800;margin-bottom:2px;font-size:1.08rem}
+  .th-meta{font-size:.92rem;color:#444}
+  .th-desc{margin-top:5px;color:#333;font-size:.98rem;line-height:1.28;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .th-badge{display:inline-block;margin-left:8px;background:#eee;border-radius:6px;padding:1px 6px;font-size:.8em;color:#333}
 
-  /* MOBIILI / TABLET: salli scroll */
-  @media (max-width: 1024px){
+  /* MOBIILI: salli scroll */
+  @media (max-width:1024px){
     #clock{display:none}
     .slide-body{
       overflow:auto;
@@ -130,6 +128,7 @@
     }
     .forecast{grid-template-columns:repeat(3,1fr)}
     .wx-grid{height:auto; max-width:none}
+    .slide-header{font-size:1.15rem}
   }
 </style>
 </head>
@@ -182,7 +181,7 @@
   </section>
 
   <!-- 3) HÄLYTYKSET – TILANNEHUONE -->
-  <section class="slide th" id="slide-th" aria-label="Hälytykset – Tilannehuone">
+  <section class="slide th" id="slide-th" aria-label="Hälytykset – Tilannehuone (Keski-Uusimaa + Vantaa)">
     <div class="slide-header">Hälytykset – Tilannehuone (Keski-Uusimaa + Vantaa)</div>
     <div class="slide-body">
       <div id="th-list" class="th-list">
@@ -196,20 +195,21 @@
 <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
 /* ===================== KONFFIT ===================== */
-const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';  // ← Cloudflare Worker -proxy (sama jota olet jo käyttänyt)
+const SHOW_CLOCK = true;   // false = piilota kello
+const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // Cloudflare Worker -proxy
 const SLIDES = ['slide-events','slide-wx','slide-th'];
 let   slideIndex = 0;
 const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
 
 /* ===================== KELLO + DIAKIERRÄTYS ===================== */
 function tickClock(){
-  const now = new Date();
   const el = document.getElementById('clock');
-  if (el) {
-    el.textContent =
+  if (!SHOW_CLOCK){ if (el) el.style.display='none'; return; }
+  if (!el) return;
+  const now = new Date();
+  el.textContent =
       now.toLocaleDateString('fi-FI',{weekday:'long', day:'numeric', month:'long'})+' '+
       now.toLocaleTimeString('fi-FI',{hour:'2-digit', minute:'2-digit'});
-  }
 }
 setInterval(tickClock, 1000); tickClock();
 
@@ -224,7 +224,7 @@ let autoTimer = setInterval(()=>{
   showSlide(slideIndex);
 }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
 
-/* Kevyt swipe */
+/* Swipe mobiilissa */
 (function enableSwipe(){
   const container = document.getElementById('slides');
   if (!container) return;
@@ -508,78 +508,76 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== TILANNEHUONE – HTML-scrape ===================== */
-/* Hae listanäkymä (ilman karttoja) ja pura yksittäisiksi tapahtumiksi. */
+/* ===================== TILANNEHUONE – SIIVOTTU PARSINTA ===================== */
 const TH_URL = 'https://www.tilannehuone.fi/halytys.php'; // päälista
-
-const REGION_NAMES = [
-  'Nurmijärvi','Järvenpää','Kerava','Tuusula','Hyvinkää','Mäntsälä','Pornainen',
-  'Klaukkala','Vantaa','Keski-Uusimaa'
-];
-const INCIDENT_KEYWORDS = [
-  'tieliikenneonnettomuus','liikenneonnettomuus','kolari',
-  'tulipalo','rakennuspalo','maastopalo','autopalo','ajoneuvopalo'
-];
+const REGION_NAMES = ['Nurmijärvi','Järvenpää','Kerava','Tuusula','Hyvinkää','Mäntsälä','Pornainen','Klaukkala','Vantaa','Keski-Uusimaa'];
+const INCIDENT_KEYWORDS = ['tieliikenneonnettomuus','liikenneonnettomuus','kolari','tulipalo','rakennuspalo','maastopalo','autopalo','ajoneuvopalo'];
 
 function areaHit(txt){ return REGION_NAMES.some(n => txt.includes(n.toLowerCase())); }
 function typeHit(txt){ return INCIDENT_KEYWORDS.some(k => txt.includes(k)); }
-function tagFromText(t){
-  if (t.includes('palo')) return 'fire';
-  if (t.includes('onnettomuus') || t.includes('kolari')) return 'accident';
-  return '';
-}
+function tagFromText(t){ if (t.includes('palo')) return 'fire'; if (t.includes('onnettomuus')||t.includes('kolari')) return 'accident'; return ''; }
 function extractDT(txt){
-  const d1 = txt.match(/\b20\d{2}-\d{2}-\d{2}\b/);           // 2025-08-29
-  const d2 = txt.match(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/);       // 29.8.2025
-  const t1 = txt.match(/\b\d{1,2}:\d{2}\b/);                 // 14:05
+  const d1 = txt.match(/\b20\d{2}-\d{2}-\d{2}\b/);
+  const d2 = txt.match(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/);
+  const t1 = txt.match(/\b\d{1,2}:\d{2}\b/);
   return { date: d1?.[0] || d2?.[0] || '', time: t1?.[0] || '' };
 }
 
 function parseTilannehuoneHTML(rawHtml){
-  // 1) Poimi näkyvä teksti
-  const tmp = document.createElement('div'); tmp.innerHTML = rawHtml;
-  const text = (tmp.textContent || tmp.innerText || '').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+  // Lataa HTML temppiin ja siivoa aggressiivisesti
+  const tmp = document.createElement('div');
+  tmp.innerHTML = rawHtml;
 
-  // 2) Yritä pilkkoa rivikohtaisiksi tapauksiksi:
-  //    – lisätään erotin jokaisen "HH:MM" kohdan eteen
-  const withDelims = text.replace(/(\b\d{1,2}:\d{2}\b)/g, '\n$1 ');
-  let parts = withDelims.split('\n').map(s=>s.trim()).filter(s=>s.length>10);
+  // Poista skriptit, tyylit, iframet, noscript, sekä tyypilliset mainos/vo-näyttöelementit
+  tmp.querySelectorAll('script, style, iframe, noscript, .lwhbim, .ad, .ad-container, [id*="ads"], [class*="ad-"], [id*="cookie"], [class*="cookie"]').forEach(el=>el.remove());
 
-  // 3) Fallback: jos liian vähän osumia, yritä pilkkoa linkkitekstien perusteella
-  if (parts.length < 3){
-    const links = Array.from(tmp.querySelectorAll('a'));
-    const lines = links.map(a=>a.textContent.trim()).filter(s=>s.length>10);
-    if (lines.length) parts = lines;
+  // Poimitaan tekstikappaleita – Tilannehuone käyttää mm. .pfade ja .plink,
+  // mutta lisäksi otetaan mukaan puhtaat tekstisolut joissa on hälytystekstiä.
+  const blocks = [];
+  const pick = el => {
+    const t = el.textContent.replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+    if (t.length >= 20) blocks.push(t);
+  };
+  tmp.querySelectorAll('.pfade, .plink, .uutinen, .uutiset, .lista, .list, .content, #cnt_lista, #content').forEach(pick);
+
+  // Fallback: jos ei löytynyt erikoisluokkia, kaiva kaikki <p> ja <li>
+  if (blocks.length < 5) {
+    tmp.querySelectorAll('p, li').forEach(pick);
   }
 
-  // 4) Map → objektilista
-  const items = parts.map(s=>{
-    const lower = s.toLowerCase();
-    const tag = tagFromText(lower);
-    const {date, time} = extractDT(s);
-    const ended = /tilanne\s+ohi/i.test(s) ? 'Tilanne ohi' : '';
-    // Otsikko: hae ensimmäinen lauseke ennen pitkää satunnaista sepustusta
-    const title = s.split(/ - | – | — | \| /)[0].trim();
-    // Kuvaus: loput
-    const desc  = s.slice(title.length).trim();
-    const meta  = [date,time].filter(Boolean).join(' ');
-    return { title, desc, meta, tag, raw:s };
+  // Pilko riveiksi ja jalosta korteiksi
+  const items = [];
+  blocks.forEach(text=>{
+    // Karsi toistuvat UI-tekstit (“Juuri nyt”, “Facebook”, ym.)
+    if (/Juuri nyt|Facebook|Rekisteröidy|Kirjaudu|Haku|Kartta/i.test(text)) return;
+
+    // erottele ensimmäinen osa otsikoksi (ennen ensimmäistä “: ” tai “ - ”)
+    const segs = text.split(/ - | – | — |: /);
+    const title = segs[0]?.trim() || '';
+    const rest  = text.slice(title.length).trim();
+    if (title.length < 5) return;
+
+    const lowerAll = (title + ' ' + rest).toLowerCase();
+    const {date, time} = extractDT(text);
+    const ended = /tilanne\s+ohi/i.test(text) ? 'Tilanne ohi' : '';
+    const tag = tagFromText(lowerAll);
+
+    // Suodata alue & tyyppi
+    if (!areaHit(lowerAll) || !typeHit(lowerAll)) return;
+
+    items.push({
+      title,
+      desc: rest,
+      meta: [date,time].filter(Boolean).join(' '),
+      tag,
+      ended,
+      key: title + '|' + date + '|' + time
+    });
   });
 
-  // 5) Suodata alue + tyyppi
-  const filtered = items.filter(it=>{
-    const t = it.raw.toLowerCase();
-    return areaHit(t) && typeHit(t);
-  });
-
-  // Poista duplikaatit (sama otsikko+meta)
+  // Poista duplikaatit
   const seen = new Set();
-  const unique = filtered.filter(it=>{
-    const key = it.title + '|' + it.meta;
-    if (seen.has(key)) return false;
-    seen.add(key); return true;
-  });
-
+  const unique = items.filter(it => (seen.has(it.key) ? false : (seen.add(it.key), true)));
   return unique;
 }
 
@@ -593,18 +591,24 @@ async function loadTilannehuone(){
     const html = await r.text();
 
     const items = parseTilannehuoneHTML(html);
+
     if (!items.length){
       list.innerHTML = '<div class="th-item"><div class="th-title">Ei ajankohtaisia hälytyksiä alueella</div></div>';
       return;
     }
 
-    list.innerHTML = items.slice(0, IS_MOBILE ? 40 : 30).map(it=>{
-      return `<div class="th-item ${it.tag}">
-        <div class="th-title">${it.title}${/tilanne\s+ohi/i.test(it.raw) ? `<span class="th-badge">Tilanne ohi</span>`:''}</div>
+    // Rajaa määrää (mobiilissa enemmän scrollattavaa)
+    const maxItems = IS_MOBILE ? 40 : 30;
+    list.innerHTML = items.slice(0, maxItems).map(it=>`
+      <div class="th-item ${it.tag}">
+        <div class="th-title">
+          ${it.title}
+          ${it.ended ? `<span class="th-badge">${it.ended}</span>`:''}
+        </div>
         ${it.meta ? `<div class="th-meta">${it.meta}</div>`:''}
         ${it.desc ? `<div class="th-desc">${it.desc}</div>`:''}
-      </div>`;
-    }).join('');
+      </div>
+    `).join('');
 
   }catch(e){
     console.error('Tilannehuone haku epäonnistui:', e);
