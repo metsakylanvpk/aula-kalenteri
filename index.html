@@ -111,7 +111,7 @@
   .lvl-orange .warn-icon{background:#ff9800}
   .lvl-red    .warn-icon{background:#e53935}
 
-  /* ======= LIIKENNE ======= */
+  /* ======= LIIKENNE (Tilannehuone) ======= */
   .traffic-only .slide-header{background:var(--accent)}
   .traffic-list{display:grid;gap:10px}
   .traffic-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -217,12 +217,12 @@
     </div>
   </section>
 
-  <!-- 3) LIIKENNE -->
-  <section class="slide traffic-only" id="slide-traffic" aria-label="Liikennetiedotteet">
-    <div class="slide-header">Liikennetiedotteet (Keski-Uusimaa + Vantaa)</div>
+  <!-- 3) LIIKENNE / HÄLYTYKSET (Tilannehuone) -->
+  <section class="slide traffic-only" id="slide-traffic" aria-label="Hälytykset (Tilannehuone)">
+    <div class="slide-header">Hälytykset – Keski-Uusimaa + Vantaa</div>
     <div class="slide-body">
       <div id="traffic-list" class="traffic-list">
-        <div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>
+        <div class="traffic-item"><div class="t-title">Ladataan hälytystietoja…</div></div>
       </div>
     </div>
   </section>
@@ -233,7 +233,7 @@
 <script>
 /* ===================== YLEISET ===================== */
 const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← VAIHDA omaan Worker-osoitteeseesi
-const SLIDES = ['slide-events','slide-wx','slide-traffic'];  // 3 diaa (asset-diat lisätään perään jos löytyvät)
+const SLIDES = ['slide-events','slide-wx','slide-traffic'];  // 3 diaa + mahdolliset asset-diat
 let   slideIndex = 0;
 const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
 
@@ -261,7 +261,7 @@ let autoTimer = setInterval(()=>{
   showSlide(slideIndex);
 }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
 
-/* ===== Swipe-eleet diojen vaihtoon ===== */
+/* Swipe-eleet */
 (function enableSwipe(){
   const container = document.getElementById('slides');
   if (!container) return;
@@ -565,18 +565,121 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== DIGITRAFFIC – Liikennetiedotteet ===================== */
-/* Laaja BBOX Keski-Uusimaa + Vantaa (kattaa Nurmijärvi–Tuusula–Kerava–Järvenpää–Hyvinkää–Vantaa) */
-const BBOX = { latMin: 60.20, latMax: 60.65, lonMin: 24.40, lonMax: 25.30 };
-
-/* Aikaikkunat (MUUTOS: 36h julkaisu, 18h päättymisen jälkeen) */
-const TRAFFIC_WINDOW_H_START      = 36; // julkaistu viimeisten x tunnin aikana
-const TRAFFIC_WINDOW_H_AFTER_END  = 18; // päättymisen jälkeen näkyvissä
-
+/* ===================== HÄLYTYKSET – Tilannehuone (HTML-scrape) ===================== */
+/* Huom: ei ole virallinen API; haetaan pääsivu ja suodatetaan tekstistä. */
 const REGION_NAMES = [
   'Nurmijärvi','Järvenpää','Kerava','Tuusula','Hyvinkää','Mäntsälä','Sipoo','Pornainen',
   'Vantaa','Klaukkala','Keski-Uusimaa','Pääkaupunkiseutu','Uusimaa'
 ];
+const INCIDENT_KEYWORDS = [
+  'tieliikenneonnettomuus','liikenneonnettomuus','kolari',
+  'tulipalo','rakennuspalo','maastopalo','autopalo','ajoneuvopalo'
+];
+
+function looksRelevant(text){
+  const t = (text||'').toLowerCase();
+  const areaHit = REGION_NAMES.some(n => t.includes(n.toLowerCase()));
+  const typeHit = INCIDENT_KEYWORDS.some(k => t.includes(k));
+  return areaHit && typeHit;
+}
+function isAccident(text){
+  const t = (text||'').toLowerCase();
+  return t.includes('onnettomuus') || t.includes('kolari');
+}
+function extractTimeAndDate(text){
+  // Etsi 2025-08-28 tai 28.8.2025 ja kellonaika 12:34
+  const d1 = text.match(/\b20\d{2}-\d{2}-\d{2}\b/);
+  const d2 = text.match(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/);
+  const t1 = text.match(/\b\d{1,2}:\d{2}\b/);
+  return {
+    date: d1?.[0] || d2?.[0] || '',
+    time: t1?.[0] || ''
+  };
+}
+function htmlToText(html){
+  const tmp = document.createElement('div'); tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
+}
+
+async function loadTilannehuone(){
+  const box = document.getElementById('traffic-list');
+  if (!box) return;
+  box.innerHTML = '<div class="traffic-item"><div class="t-title">Ladataan hälytystietoja…</div></div>';
+
+  try{
+    const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
+    const r = await fetchWithTimeout(url, 15000);
+    if (!r.ok) throw new Error('Tilannehuone HTTP '+r.status);
+    const html = await r.text();
+
+    // Yritetään parsiä listaelementtejä; fallback: pätkitään <li> ja <div class="...">.
+    let items = [];
+
+    // 1) Yritä DOMParser
+    try{
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      // Etsi listakohdat – varmuuden vuoksi laajalla haulla
+      const nodes = doc.querySelectorAll('li, .alert, .list-group-item, .td, .row, .container *');
+      nodes.forEach(n=>{
+        const txt = n.textContent?.trim() || '';
+        if (txt.length > 20 && looksRelevant(txt)) {
+          items.push(txt);
+        }
+      });
+    }catch(_){}
+
+    // 2) Jos ei tullut mitään, hajota raakatekstinä
+    if (!items.length){
+      const parts = html.split(/<\/li>|<\/div>/i);
+      parts.forEach(p=>{
+        const txt = htmlToText(p).replace(/\s+/g,' ').trim();
+        if (txt.length > 20 && looksRelevant(txt)){
+          items.push(txt);
+        }
+      });
+    }
+
+    // Poista duplikaatit
+    items = Array.from(new Set(items));
+
+    // Rakennetaan kortit
+    if (!items.length){
+      box.innerHTML = '<div class="traffic-item"><div class="t-title">Ei ajankohtaisia hälytyksiä alueella</div></div>';
+      return;
+    }
+
+    // Järjestä karkeasti: onnettomuudet ensin
+    items.sort((a,b)=>{
+      const aa = isAccident(a) ? 0 : 1;
+      const bb = isAccident(b) ? 0 : 1;
+      if (aa !== bb) return aa - bb;
+      return b.length - a.length; // pidempi ensin
+    });
+
+    const htmlList = items.slice(0, IS_MOBILE ? 40 : 30).map(txt=>{
+      const {date,time} = extractTimeAndDate(txt);
+      const title = txt.split('-')[0].trim(); // usein alku on tyyppi
+      const body  = txt.replace(title,'').trim();
+      const acc   = isAccident(txt);
+      return `<div class="traffic-item${acc?' accident':''}">
+        <div class="t-title">${title}</div>
+        <div class="t-meta">${[date,time].filter(Boolean).join(' • ')}</div>
+        <div class="t-desc">${body}</div>
+      </div>`;
+    }).join('');
+
+    box.innerHTML = htmlList;
+
+  }catch(e){
+    console.warn('Tilannehuone epäonnistui, kokeillaan Digitraffic-fallbackia', e);
+    await loadTrafficFallbackDigitraffic();
+  }
+}
+
+/* Fallback: Digitraffic (jos Tilannehuone ei onnistu) */
+const BBOX = { latMin: 60.20, latMax: 60.65, lonMin: 24.40, lonMax: 25.30 };
+const TRAFFIC_WINDOW_H_START      = 36;
+const TRAFFIC_WINDOW_H_AFTER_END  = 18;
 
 function inBboxCoord(lat, lon) {
   return lat >= BBOX.latMin && lat <= BBOX.latMax && lon >= BBOX.lonMin && lon <= BBOX.lonMax;
@@ -586,11 +689,9 @@ function geomInBbox(geometry){
   const type = geometry.type;
   const coords = geometry.coordinates;
   if (!coords) return false;
-
   try {
     if (type === 'Point') {
-      const [lon,lat] = coords;
-      return inBboxCoord(lat,lon);
+      const [lon,lat] = coords; return inBboxCoord(lat,lon);
     }
     if (type === 'LineString') {
       return coords.some(([lon,lat]) => inBboxCoord(lat,lon));
@@ -604,7 +705,6 @@ function geomInBbox(geometry){
   } catch(_) {}
   return false;
 }
-
 function extractAreaStrings(feature){
   const out = [];
   const anns = feature?.properties?.announcements || [];
@@ -626,7 +726,7 @@ function isInTargetArea(feature){
 }
 function isAccidentFeature(feature){
   const txt = JSON.stringify(feature?.properties || {}).toLowerCase();
-  return txt.includes('onnettomu') || txt.includes('kolari') || txt.includes('liikenneonnettomuus');
+  return txt.includes('onnettomu') || txt.includes('kolari') || txt.includes('liikenneonnettomuus') || txt.includes('tulipalo') || txt.includes('palo ');
 }
 function extractTimes(feature){
   const p = feature?.properties || {};
@@ -641,25 +741,15 @@ function extractTimes(feature){
     endText: tsEnd   ? new Date(tsEnd).toLocaleString('fi-FI')   : ''
   };
 }
-
-/* UUSI aikasuodatus */
 function isFresh(feature){
   const p = feature?.properties || {};
   const { startISO, endISO } = extractTimes(feature);
   const now = Date.now();
-
-  const startOk = startISO
-    ? (now - new Date(startISO).getTime()) <= TRAFFIC_WINDOW_H_START * 60 * 60 * 1000
-    : true;
-
-  const endedRecently = endISO
-    ? (now - new Date(endISO).getTime()) <= TRAFFIC_WINDOW_H_AFTER_END * 60 * 60 * 1000
-    : false;
-
+  const startOk = startISO ? (now - new Date(startISO).getTime()) <= TRAFFIC_WINDOW_H_START * 3600000 : true;
+  const endedRecently = endISO ? (now - new Date(endISO).getTime()) <= TRAFFIC_WINDOW_H_AFTER_END * 3600000 : false;
   const active = (p.status || '').toUpperCase() === 'ACTIVE';
   return active || endedRecently || startOk;
 }
-
 function toTrafficItem(feature){
   const p = feature?.properties || {};
   const anns = p.announcements || [];
@@ -677,7 +767,7 @@ function toTrafficItem(feature){
   const sortVal = sortTs ? new Date(sortTs).getTime() : 0;
   return { title, desc, where, status, startText, endText, accident, sortVal };
 }
-async function loadTraffic(){
+async function loadTrafficFallbackDigitraffic(){
   const box = document.getElementById('traffic-list');
   if (!box) return;
   box.innerHTML = '<div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>';
@@ -708,10 +798,10 @@ async function loadTraffic(){
         ${inactive ? `<div class="t-meta"><strong>Tilanne ohi</strong>${it.endText ? ` • ${it.endText}`:''}</div>` : ''}
       </div>`;
     }).join('');
-    box.innerHTML = html || '<div class="card">Ei ajankohtaisia tiedotteita alueella</div>';
+    box.innerHTML = html || '<div class="traffic-item"><div class="t-title">Ei ajankohtaisia tiedotteita alueella</div></div>';
   }catch(e){
-    console.error('Digitraffic:', e);
-    box.innerHTML = '<div class="card">Liikennetietoja ei voitu hakea</div>';
+    console.error('Digitraffic fallback epäonnistui:', e);
+    box.innerHTML = '<div class="traffic-item"><div class="t-title">Liikennetietoja ei voitu hakea</div></div>';
   }
 }
 
@@ -801,14 +891,14 @@ async function init(){
   // Sää + varoitukset
   await loadFmiWeather();
   await loadWarnings();
-  // Liikenne
-  await loadTraffic();
+  // Hälytykset (Tilannehuone)
+  await loadTilannehuone();
 
   // Päivityssyklit
   setInterval(async ()=>{ const e=await loadICS(ICS_URL()); renderEvents('miehisto-events', e); }, 5*60*1000);
   setInterval(loadFmiWeather,  10*60*1000);
   setInterval(loadWarnings,    10*60*1000);
-  setInterval(loadTraffic,      5*60*1000);
+  setInterval(loadTilannehuone, 5*60*1000);
 }
 init();
 </script>
