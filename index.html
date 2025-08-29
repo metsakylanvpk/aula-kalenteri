@@ -533,26 +533,32 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== TILANNEHUONE (24h + lisätiedot) ===================== */
+/* ===================== TILANNEHUONE (24h + lisätiedot, DOM-pohjainen) ===================== */
 const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
 
-/* 1) Puhdas teksti ja 2) koko HTML ankkureiden bongaamiseksi */
+/* Yleiset apurit */
+function normUrl(href){
+  if (!href) return null;
+  try{
+    if (/^https?:/i.test(href)) return href;
+    return new URL(href, 'https://www.tilannehuone.fi/').toString();
+  }catch{ return null; }
+}
+function capitalFirst(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+function levelToClass(level){
+  const l = (level||'').toLowerCase();
+  if (l.includes('suuri')) return 'sev-large';
+  if (l.includes('keskisuuri')) return 'sev-medium';
+  return ''; // pieni -> perus
+}
+
+/* ❶ Fallback-tekstiparsinta (säilytetään varalta) */
 function cleanHtmlToText(html){
   const tmp = document.createElement('div');
   tmp.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
   const text = tmp.textContent || tmp.innerText || '';
   return text.replace(/\u00AD/g,'').replace(/\s+/g,' ').trim();
 }
-function extractAnchors(html){
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const as = [...doc.querySelectorAll('a[href]')];
-  return as.map(a => ({
-    href: a.getAttribute('href'),
-    text: (a.textContent||'').trim()
-  })).filter(x => x.href && /tehtav|tehtävä|tehtava|tiedote|uutinen/i.test(x.href));
-}
-
-/* Parsitaan perusrivit: "Kunta  dd.mm.yyyy hh:mm(:ss)  kuvaus: taso" */
 function parseTilanneFromText(text){
   const results = [];
   const re = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+([^\n\r]+?)(?=\s+[A-ZÅÄÖ]|$)/g;
@@ -562,48 +568,102 @@ function parseTilanneFromText(text){
     const date = m[2].trim();
     const time = m[3].trim();
     const tail = m[4].trim();
-
-    let kind = tail;
-    let level = '';
+    let kind = tail, level = '';
     const lv = tail.match(/:\s*(pieni|keskisuuri|suuri)\b/i);
-    if (lv) {
-      level = lv[1].toLowerCase();
-      kind  = tail.replace(lv[0], '').trim().replace(/:$/, '').trim();
-    }
+    if (lv) { level = lv[1].toLowerCase(); kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim(); }
     const [d,mo,y] = date.split('.');
     const ts = new Date(`${y}-${mo}-${d}T${time.length===5?time+':00':time}`);
-    if (!isNaN(ts.getTime())) {
-      results.push({ city, time: ts, kind, level, raw: tail });
-    }
+    if (!isNaN(ts.getTime())) results.push({ city, time: ts, kind, level, detailUrl:null });
   }
   return results;
 }
 
-/* Yritä liittää “lisätietolinkki” riviin: heuristiikka – etsitään ankkuri, jonka teksti tai href esiintyy lähellä kuvausta */
-function attachDetailLinks(items, anchors){
-  const out = items.map(x=>({...x, detailUrl:null}));
-  anchors.forEach(a=>{
-    let href = a.href;
-    if (!/^https?:/i.test(href)) { // suhteellinen
-      try { href = new URL(href, 'https://www.tilannehuone.fi/').toString(); } catch(_){}
+/* ❷ UUSI: DOM-parsija – yrittää löytää rivikontit ja niiden sisäiset linkit */
+function parseTilanneFromDom(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  // Etsi tehtävärivejä – kokeillaan yleisiä rakenteita:
+  const rowSelectors = [
+    'li',                            // listat
+    'tr',                            // taulukot
+    '.list-item, .news-item, .event',// yleiset classit
+    '.content ul li', '.container li',
+    '.items > *'
+  ];
+  // ankkurit jotka todennäköisesti vievät lisätietoihin:
+  const anchorSelector = 'a[href*="tehtav"], a[href*="tehtävä"], a[href*="tehtava"], a[href*="uutinen"], a[href*="tiedote"], a[href*="id="]';
+
+  // kerää kaikki kandidaattirivit
+  let candidates = [];
+  rowSelectors.forEach(sel => candidates.push(...doc.querySelectorAll(sel)));
+  // jos tuli liikaa, suodata näkyviin ja tekstiä sisältävät
+  candidates = candidates
+    .filter(el => (el.textContent||'').trim().length > 20)   // jotain sisältöä
+    .filter(el => !el.querySelector('nav, header, footer, form')) // ei navigaatioita
+    .slice(0, 1000);
+
+  const items = [];
+
+  // regex riviltä kunta+pvm+klo+kuvaus
+  const lineRe = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+(.+)/;
+
+  for (const row of candidates){
+    const text = row.textContent.replace(/\s+/g,' ').replace(/\u00AD/g,'').trim();
+    const m = text.match(lineRe);
+    if (!m) continue;
+
+    let city  = m[1].trim();
+    let date  = m[2].trim();
+    let time  = m[3].trim();
+    let tail  = m[4].trim();
+
+    // erottele taso
+    let kind = tail, level = '';
+    const lv = tail.match(/:\s*(pieni|keskisuuri|suuri)\b/i);
+    if (lv) { level = lv[1].toLowerCase(); kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim(); }
+
+    const [d,mo,y] = date.split('.');
+    const ts = new Date(`${y}-${mo}-${d}T${time.length===5?time+':00':time}`);
+    if (isNaN(ts.getTime())) continue;
+
+    // etsi lisätietolinkki riviltä
+    let a = row.querySelector(anchorSelector);
+    // joskus linkki on sisarsolmussa -> katso myös lähimmän containerin sisaruksia
+    if (!a){
+      const near = row.closest('div, li, tr')?.parentElement;
+      if (near) a = near.querySelector(anchorSelector);
     }
-    // Kevyt osumahaku: jos ankkurin teksti esiintyy rivin “raw”-tekstissä, liitä
-    const hit = out.find(it => it.raw.toLowerCase().includes((a.text||'').toLowerCase()) || it.raw.toLowerCase().includes(href.split('?')[0].toLowerCase()));
-    if (hit && !hit.detailUrl) hit.detailUrl = href;
-  });
-  return out;
+    const detailUrl = a ? normUrl(a.getAttribute('href')) : null;
+
+    items.push({ city, time: ts, kind, level, detailUrl });
+  }
+
+  // deduplikoi (city+time+kind)
+  const seen = new Set();
+  const unique = [];
+  for (const it of items){
+    const key = `${it.city}|${it.time.toISOString()}|${it.kind.toLowerCase()}`;
+    if (!seen.has(key)){ seen.add(key); unique.push(it); }
+  }
+
+  // jos DOM:sta ei tullut mitään, fallback tekstiin
+  if (!unique.length){
+    const fallback = parseTilanneFromText(cleanHtmlToText(html));
+    return fallback;
+  }
+  return unique;
 }
 
-/* Hae lyhyt kuvaus tehtäväsivulta (ensimmäinen 1–2 virkettä) */
+/* ❸ Nouto lisätietosivulta: 1–2 ensimmäistä virkettä */
 async function fetchDetailSnippet(url){
+  if (!url) return '';
   try{
     const r = await fetchWithTimeout(PROXY + encodeURIComponent(url) + '&_=' + Date.now(), 12000);
     if (!r.ok) throw new Error('HTTP '+r.status);
     const html = await r.text();
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    // etsi varsinainen tekstiosa: kokeillaan <article>, .content, .news, p
-    let container = doc.querySelector('article, .content, .news, main') || doc.body;
-    let text = [...container.querySelectorAll('p')]
+    let container = doc.querySelector('article, .content, .news, main, #content') || doc.body;
+    let text = [...container.querySelectorAll('p, .lead')]
       .map(p=>p.textContent?.trim()||'')
       .filter(Boolean)
       .join(' ')
@@ -611,21 +671,12 @@ async function fetchDetailSnippet(url){
       .trim();
     if (!text) text = (container.textContent||'').replace(/\s+/g,' ').trim();
     if (!text) return '';
-    // 1–2 virkettä
     const m = text.match(/^(.+?[\.\!\?])\s*(.+?[\.\!\?])?/);
     return m ? (m[1] + (m[2] ? ' ' + m[2] : '')) : text.slice(0,240);
   }catch{ return ''; }
 }
 
-/* Luokat skaalaukseen ja “Tilanne ohi” */
-function levelToClass(level){
-  const l = (level||'').toLowerCase();
-  if (l.includes('suuri')) return 'sev-large';
-  if (l.includes('keskisuuri')) return 'sev-medium';
-  return ''; // pieni -> perus
-}
-function capitalFirst(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
-
+/* ❹ Pääfunktio */
 async function loadTilannehuone(){
   const box = document.getElementById('th-list');
   if (!box) return;
@@ -636,42 +687,34 @@ async function loadTilannehuone(){
     const html = await resp.text();
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
-    const text = cleanHtmlToText(html);
-    const anchors = extractAnchors(html);
-    let items = parseTilanneFromText(text);
-    items = attachDetailLinks(items, anchors);
+    // DOM-parsinta
+    let items = parseTilanneFromDom(html);
 
-    // Suodata 24h ja järjestä
+    // 24h suodatus + järjestys
     const now = Date.now(), dayMs = 24*60*60*1000;
     items = items
       .filter(it => (now - it.time.getTime()) <= dayMs)
       .sort((a,b)=>b.time - a.time)
       .slice(0, 20);
 
-    // Nouda lisätiedot vain tuoreimmille (ettei kuormita sivua liikaa)
-    const fetchCount = Math.min(8, items.length);
-    const detailPromises = items.slice(0, fetchCount).map(async (it, idx)=>{
-      if (it.detailUrl){
-        it.detail = await fetchDetailSnippet(it.detailUrl);
-      }
-      return it;
-    });
-    await Promise.all(detailPromises);
+    // Nouda lisätiedot tuoreimmista, joissa on linkki
+    const targets = items.filter(it => it.detailUrl).slice(0, 10);
+    await Promise.all(targets.map(async it => { it.detail = await fetchDetailSnippet(it.detailUrl); }));
 
     if (!items.length){
       box.innerHTML = '<div class="th-item"><div class="th-title">Ei tuoreita hälytyksiä</div></div>';
       return;
     }
 
-    // Renderöi
+    // Render
     box.innerHTML = items.map(it=>{
       const timeText = it.time.toLocaleString('fi-FI');
-      const sevCls = levelToClass(it.level);
-      const ended = (now - it.time.getTime()) > 3*60*60*1000; // heuristiikka “tilanne ohi”
+      const clsSev = levelToClass(it.level);
+      const ended = (now - it.time.getTime()) > 3*60*60*1000; // heuristinen “Tilanne ohi”
       const titleTxt = capitalFirst((it.kind||'Hälytys').replace(/\s+/g,' '));
       const levelTxt = it.level ? ` <span class="th-sev">(${capitalFirst(it.level)})</span>` : '';
       const detailTxt = it.detail ? `<div class="th-desc">${it.detail}</div>` : '';
-      return `<div class="th-item ${sevCls}${ended?' ended':''}">
+      return `<div class="th-item ${clsSev}${ended?' ended':''}">
         <div class="th-top">
           <div class="th-city">${it.city}</div>
           <div class="th-time">${timeText}</div>
@@ -681,12 +724,12 @@ async function loadTilannehuone(){
         ${ended ? `<div class="th-ended"><strong>Tilanne ohi</strong></div>` : ''}
       </div>`;
     }).join('');
-
   }catch(e){
     console.error('Tilannehuone:', e);
     box.innerHTML = '<div class="th-item"><div class="th-title">Hälytyksiä ei voitu hakea</div></div>';
   }
 }
+
 
 /* ===================== INIT + PÄIVITYKSET ===================== */
 async function init(){
@@ -708,3 +751,4 @@ init();
 </script>
 </body>
 </html>
+
