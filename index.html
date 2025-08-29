@@ -1,1 +1,848 @@
-<!DOCTYPE html> <html lang="fi"> <head> <meta charset="UTF-8" /> <title>Aulan näyttö – Tapahtumat • Sää • Tilannehuone</title> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <style> :root{ --gap: 16px; --panel-pad: 16px; --header-h: 64px; --accent: #007b83; /* yhtenäinen tehosteväri */ --slide-time-ms: 20000; /* 20 s per näkymä */ } html,body{ margin:0;height:100vh;width:100vw;background:#e9eef3;color:#111; font-family:"Segoe UI",Tahoma,Verdana,sans-serif;overflow:hidden; -webkit-text-size-adjust:100%; touch-action: manipulation; } #clock{ position:fixed;top:10px;right:16px;font-size:1.1rem;font-weight:700; background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:8px;z-index:10 } /* SLIDES */ .slides{height:100%;width:100%;position:relative} .slide{ position:absolute;inset:0;background:#fff;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.15); display:grid;grid-template-rows:var(--header-h) 1fr;overflow:hidden;opacity:0;pointer-events:none;transform:scale(.985); transition:opacity .35s ease, transform .35s ease;margin:var(--gap); -webkit-tap-highlight-color: transparent; } .slide.active{opacity:1;pointer-events:auto;transform:scale(1)} .slide-header{ display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.5rem;color:#fff;background:var(--accent); user-select:none; } .slide-body{ background:#f2f6fa;padding:var(--panel-pad); overflow:hidden; /* desktop: ei scrollia */ -webkit-overflow-scrolling:auto; } /* ======= TAPAHTUMAT ======= */ .events .slide-header{background:var(--accent)} .events-list{display:grid;gap:12px} .event-card{ background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12); padding:12px 14px } .event-date{ font-weight:800;color:#fff;border-radius:8px;display:inline-block;padding:5px 10px;margin-bottom:6px } .event-title{font-weight:800;font-size:1.18rem;word-break:break-word} .event-description{margin-top:6px;color:#333;font-size:1.02rem} /* 1920×1080: ~5 korttia ilman scrollia (desktop) */ @media (min-width: 1025px){ .events-list{grid-auto-rows:minmax(0,1fr)} .event-card{padding:14px 16px} .event-title{font-size:1.22rem} } /* ======= SÄÄ + VAROITUKSET ======= */ .wx-alerts .slide-header{background:var(--accent)} .wx-grid{ height:100%; max-width:1600px; margin:0 auto; display:grid; gap:16px; grid-template-rows:auto auto 1fr; /* sää, ennuste, varoitukset täyttää lopun */ grid-template-columns:1fr; grid-template-areas: "wx" "fc" "warn"; } .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden} .panel-h{height:48px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px;background:var(--accent)} .panel-b{background:#f2f6fa;padding:12px} .p-wx {grid-area: wx} .p-fc {grid-area: fc} .p-warn {grid-area: warn} /* Sääkortti */ .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:10px} .w-city{font-size:1.2rem;font-weight:900} .w-temp{font-size:2.2rem;font-weight:900} .w-row{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap} .w-badge{background:#eef3f8;border-radius:8px;padding:6px 10px} .w-icon{font-size:1.6rem;margin-left:6px} .muted{opacity:.7} /* Ennuste (kompakti) */ .forecast{display:grid;gap:10px;grid-template-columns:repeat(6,1fr)} .fc-item{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 6px rgba(0,0,0,.12);text-align:center} .fc-time{font-weight:800;margin-bottom:4px} .fc-temp{font-size:1.05rem;font-weight:900} .fc-sub{font-size:.92rem;color:#333;margin-top:2px} /* Varoitukset – määrä rajataan JS:ssä */ .warn-list{display:grid;gap:10px} .warn-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;grid-template-columns:28px 1fr;gap:10px} .warn-icon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900} .warn-content{display:grid;gap:4px} .w-title{font-weight:800} .w-when{font-size:.95rem;opacity:.8} .w-desc{font-size:.98rem} .lvl-yellow .warn-icon{background:#f2c744;color:#1d1d1f} .lvl-orange .warn-icon{background:#ff9800} .lvl-red .warn-icon{background:#e53935} /* ======= TILANNEHUONE ======= */ .tilanne .slide-header{background:var(--accent)} .th-list{display:grid;gap:10px} .th-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)} .th-top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline} .th-city{font-weight:900} .th-time{font-size:.95rem;opacity:.8} .th-title{font-weight:800;margin-top:4px} .th-sev{margin-left:6px;font-weight:900} .sev-small{font-size:1.05rem} .sev-medium{font-size:1.12rem} .sev-large{font-size:1.18rem} .th-desc{margin-top:6px;color:#333} .th-ended{margin-top:6px;font-size:.95rem;color:#555} /* ======= ASSET DIAT (kuva/pdf/html) — jos käytätte näitä, jätä tyhjäksi tai poista jos ette */ .slide.asset .slide-header{ background: var(--accent); } .slide.asset .slide-body{ display: grid; place-items: center; overflow: hidden; /* desktop: ei scrollia */ background: #000; /* parempi tausta kuville/pdf:lle */ } .asset-wrap{ width: 100%; height: 100%; display: grid; place-items: center; background: #000; } .asset-wrap img{ max-width: 100%; max-height: 100%; height: auto; object-fit: contain; background: #000; } .asset-wrap iframe{ width: 100%; height: 100%; border: 0; background: #fff; } /* ======= MOBIILI / TABLET ======= */ @media (max-width: 1024px){ #clock{display:none} .slide-body{ overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior: contain; max-height: calc(100vh - var(--header-h) - 2*var(--gap)); } .forecast{grid-template-columns:repeat(3,1fr)} .wx-grid{height:auto; max-width:none} .slide.asset .slide-body{ overflow:auto; -webkit-overflow-scrolling:touch; } } </style> </head> <body> <div id="clock"></div> <div class="slides" id="slides"> <!-- 1) TAPAHTUMAT --> <section class="slide events active" id="slide-events" aria-label="Miehistön Tapahtumat"> <div class="slide-header">Miehistön Tapahtumat</div> <div class="slide-body"> <div id="miehisto-events" class="events-list"> <div class="event-card"><div class="event-title">Ladataan tapahtumia…</div></div> </div> </div> </section> <!-- 2) SÄÄ + VAROITUKSET --> <section class="slide wx-alerts" id="slide-wx" aria-label="Sää ja varoitukset"> <div class="slide-header">Sää ja varoitukset</div> <div class="slide-body"> <div class="wx-grid"> <div class="panel p-wx"> <div class="panel-h">Nykyinen sää</div> <div class="panel-b"> <div id="wx-card" class="weather-card"> <div class="w-city">Klaukkalan Metsäkylä</div> <div class="w-temp muted">…</div> <div class="w-row"><span class="w-badge">Ladataan FMI-säätietoja…</span></div> </div> </div> </div> <div class="panel p-fc"> <div class="panel-h">Seuraavat tunnit</div> <div class="panel-b"> <div id="wx-forecast" class="forecast"></div> </div> </div> <div class="panel p-warn"> <div class="panel-h">Varoitukset (FMI)</div> <div class="panel-b"> <div id="warn-list" class="warn-list"> <div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div> </div> </div> </div> </div> <!-- .wx-grid --> </div> </section> <!-- 3) TILANNEHUONE --> <section class="slide tilanne" id="slide-tilanne" aria-label="Tilannehuone"> <div class="slide-header">Tilannehuone</div> <div class="slide-body"> <div id="th-list" class="th-list"> <div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div> </div> </div> </section> </div> <!-- ical.js tapahtumille --> <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script> <script> /* ===================== YLEISET ===================== */ const PROXY = 'https://vpk.mijuze1.workers.dev/?url='; // ← pidä teidän Worker const SLIDES = ['slide-events','slide-wx','slide-tilanne']; // 3 diaa let slideIndex = 0; const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches; function tickClock(){ const now = new Date(); const el = document.getElementById('clock'); if (el) { el.textContent = now.toLocaleDateString('fi-FI',{weekday:'long', day:'numeric', month:'long'})+' '+ now.toLocaleTimeString('fi-FI',{hour:'2-digit', minute:'2-digit'}); } } setInterval(tickClock, 1000); tickClock(); function showSlide(i){ SLIDES.forEach((id,idx)=>{ const el = document.getElementById(id); if (el) { if (idx===i){ el.classList.add('active'); } else { el.classList.remove('active'); } } }); } let autoTimer = setInterval(()=>{ slideIndex = (slideIndex + 1) % SLIDES.length; showSlide(slideIndex); }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) ); /* Swipe */ (function enableSwipe(){ const container = document.getElementById('slides'); if (!container) return; let sx=0, sy=0, moved=false, scrolling=false; const H=50, V=30; container.addEventListener('touchstart',e=>{ if(e.touches?.length!==1) return; sx=e.touches[0].clientX; sy=e.touches[0].clientY; moved=false; scrolling=false; },{passive:true}); container.addEventListener('touchmove',e=>{ if(e.touches?.length!==1) return; const dx=e.touches[0].clientX-sx, dy=e.touches[0].clientY-sy; if(Math.abs(dy)>V){ scrolling=true; return; } if(Math.abs(dx)>5) moved=true; },{passive:true}); container.addEventListener('touchend',e=>{ if(scrolling||!moved) return; const dx=(e.changedTouches?.[0]?.clientX||sx)-sx; if(Math.abs(dx)>H){ clearInterval(autoTimer); slideIndex = dx<0 ? (slideIndex+1)%SLIDES.length : (slideIndex-1+SLIDES.length)%SLIDES.length; showSlide(slideIndex); autoTimer = setInterval(()=>{ slideIndex=(slideIndex+1)%SLIDES.length; showSlide(slideIndex); }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) ); } },{passive:true}); })(); /* Helpers */ async function fetchWithTimeout(url, ms=12000, opts={}){ const ctrl = new AbortController(); const id = setTimeout(()=>ctrl.abort(), ms); try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store', ...opts}); clearTimeout(id); return r; } catch(e){ clearTimeout(id); throw e; } } function stripLinks(html) { if (!html) return ''; const div = document.createElement('div'); div.innerHTML = html; div.querySelectorAll('a').forEach(a => a.remove()); return (div.textContent || div.innerText || '').replace(/https?:\/\/\S+/g, '').trim(); } /* ===================== TAPAHTUMAT (Nimenhuuto ICS) ===================== */ const ICS_URL = () => PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical') + '&_=' + Date.now(); function cleanTitle(title) { if (!title) return ''; const m = title.match(/(?:–|:)\s*(.+)$/); if (m && m[1]) return m[1].trim(); return title.replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '').trim(); } function getDateColor(summary) { const t = (summary || '').toLowerCase(); if (t.includes('auto')) return '#fc832f'; if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f'; if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638'; if (t.includes('päätös')) return '#fcd854'; if (t.includes('kokous')) return '#fcd854'; if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638'; if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638'; if (t.includes('juhla')) return '#7ab638'; return '#2178a1'; } function formatEventDate(sDate, eDate, allDay=false) { const s = new Date(sDate), e = new Date(eDate); const same = s.toDateString() === e.toDateString(); if (allDay) { return same ? s.toLocaleDateString('fi-FI') : ${s.toLocaleDateString('fi-FI')} – ${e.toLocaleDateString('fi-FI')}; } else if (same) { return ${s.toLocaleDateString('fi-FI')} klo ${s.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${e.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}; } else { return ${s.toLocaleDateString('fi-FI')} klo ${s.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${e.toLocaleDateString('fi-FI')} klo ${e.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}; } } async function loadICS(url) { try { const res = await fetchWithTimeout(url, 12000); if (!res.ok) return { items: [], error: ICS: ${res.status} }; const text = await res.text(); const jcal = ICAL.parse(text); const comp = new ICAL.Component(jcal); const vevents = comp.getAllSubcomponents('vevent').map(ve => new ICAL.Event(ve)); const now = new Date(); const LIMIT = IS_MOBILE ? 12 : 5; const items = vevents .filter(ev => ev.endDate && ev.endDate.toJSDate() > now) .map(ev => ({ summary: ev.summary || '', description: ev.description || '', startDate: ev.startDate.toJSDate(), endDate: ev.endDate.toJSDate(), allDay: ev.startDate.isDate && ev.endDate.isDate })) .sort((a,b)=>a.startDate-b.startDate) .slice(0, LIMIT); return { items }; } catch (e) { return { items: [], error: e.name === 'AbortError' ? 'Aikakatkaisu' : 'Verkkovirhe' }; } } function renderEvents(containerId, payload) { const c = document.getElementById(containerId); c.innerHTML = ''; const { items, error } = payload; if (error) { c.innerHTML = <div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div><div class="event-description">${error}</div></div>; return; } if (!items || !items.length){ c.innerHTML = <div class="event-card"><div class="event-title">Ei tulevia tapahtumia</div></div>; return; } items.forEach(it=>{ const card = document.createElement('div'); card.className='event-card'; const date = document.createElement('div'); date.className='event-date'; date.style.background=getDateColor(it.summary); date.textContent = formatEventDate(it.startDate, it.endDate, it.allDay); const title=document.createElement('div'); title.className='event-title'; title.textContent = cleanTitle(it.summary); card.appendChild(date); card.appendChild(title); if (it.description){ const d=document.createElement('div'); d.className='event-description'; d.textContent=stripLinks(it.description); card.appendChild(d); } c.appendChild(card); }); } /* ===================== SÄÄ (FMI WFS – HARMONIE/TVP) ===================== */ const KL = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 }; function wxEmoji(symbol){ const s = Number(symbol); if ([1].includes(s)) return '☀️'; if ([2,21,22].includes(s)) return '🌤️'; if ([3,31,32,33].includes(s)) return '⛅'; if ([4].includes(s)) return '☁️'; if ([5,6,7,8,9,10].includes(s)) return '🌧️'; if ([11,12,13,14].includes(s)) return '❄️'; if ([15,16,17,18,19,20].includes(s)) return '⛈️'; return '🌡️'; } function parseFmiTVP(xmlText){ const doc = new DOMParser().parseFromString(xmlText, 'text/xml'); const series = Array.from(doc.getElementsByTagNameNS('*','MeasurementTimeseries')); const outMap = new Map(); series.forEach(ts=>{ const id = (ts.getAttribute('gml:id')||'').toLowerCase(); const key = id.includes('temperature') ? 'T' : id.includes('windspeedms') ? 'WS' : id.includes('precipitation1h') ? 'RR' : id.includes('weathersymbol3') ? 'SYM': null; if (!key) return; Array.from(ts.getElementsByTagNameNS('*','MeasurementTVP')).forEach(tvp=>{ const time = tvp.getElementsByTagNameNS('*','time')[0]?.textContent; const val = tvp.getElementsByTagNameNS('*','value')[0]?.textContent; if (!time || val==null) return; const iso = new Date(time).toISOString(); if (!outMap.has(iso)) outMap.set(iso, { time:new Date(time) }); const rec = outMap.get(iso); rec[key] = Number(val); }); }); return Array.from(outMap.values()).sort((a,b)=>a.time-b.time); } async function loadFmiWeather(){ const card = document.getElementById('wx-card'); const forecastBox = document.getElementById('wx-forecast'); card.innerHTML = <div class="w-city">${KL.name}</div> <div class="w-temp muted">…</div> <div class="w-row"><span class="w-badge">Ladataan FMI-säätietoja…</span></div>; try{ const base = 'https://opendata.fmi.fi/wfs'; const now = new Date(); const end = new Date(now.getTime() + 9*60*60*1000); // +9h const params = new URLSearchParams({ service:'WFS', version:'2.0.0', request:'GetFeature', storedquery_id:'fmi::forecast::harmonie::surface::point::timevaluepair', latlon:${KL.lat},${KL.lon}, parameters:'temperature,windSpeedMS,WeatherSymbol3,precipitation1h', starttime: now.toISOString(), endtime: end.toISOString(), timestep: '60' }); const url = PROXY + encodeURIComponent(${base}?${params.toString()}) + '&_=' + Date.now(); const r = await fetchWithTimeout(url, 15000); if (!r.ok) throw new Error('FMI ' + r.status); const xml = await r.text(); const rows = parseFmiTVP(xml); if (!rows.length) throw new Error('FMI: tyhjä vastaus'); const nowMs = Date.now(); let current = rows.reduce((best,rec)=>{ const d = Math.abs(rec.time - nowMs); return (best==null || d < best.d) ? { rec, d } : best; }, null)?.rec || rows[0]; const temp = isFinite(current.T)? Math.round(current.T) : '–'; const wind = isFinite(current.WS)? Math.round(current.WS) : '–'; const rain = isFinite(current.RR)? current.RR.toFixed(1) : '–'; const sym = current.SYM!=null ? wxEmoji(current.SYM) : '🌡️'; card.innerHTML = <div class="w-city">${KL.name}</div> <div class="w-temp">${temp}°C <span class="w-icon">${sym}</span></div> <div class="w-row"> <span class="w-badge">Tuuli ${wind} m/s</span> <span class="w-badge">Sade ${rain} mm/h</span> <span class="w-badge">Klo ${current.time.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}</span> </div>; const upcoming = rows.filter(r => r.time > current.time).slice(0,6); forecastBox.innerHTML = upcoming.map(r=> <div class="fc-item"> <div class="fc-time">${r.time.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}</div> <div class="fc-temp">${isFinite(r.T)? Math.round(r.T)+'°C':'–'}</div> <div class="fc-sub">${wxEmoji(r.SYM||0)} ${isFinite(r.RR)? r.RR.toFixed(1):'–'} mm/h • ${isFinite(r.WS)? Math.round(r.WS):'–'} m/s</div> </div> ).join(''); }catch(e){ card.innerHTML = <div class="w-city">${KL.name}</div> <div class="w-temp">–</div> <div class="w-row"><span class="w-badge">FMI-säätietoja ei voitu hakea</span></div>; document.getElementById('wx-forecast').innerHTML = ''; } } /* ===================== VAROITUKSET (FMI CAP RSS) ===================== */ const FMI_RSS_FI = 'https://alerts.fmi.fi/cap/feed/rss_fi-FI.rss'; function sevClassFromText(txt){ const t=(txt||'').toLowerCase(); if (t.includes('punainen')||t.includes('red')) return 'lvl-red'; if (t.includes('oranssi')||t.includes('orange')) return 'lvl-orange'; if (t.includes('keltainen')||t.includes('yellow')) return 'lvl-yellow'; return ''; } function warnItemHtml(w){ return <div class="warn-item ${w.level}"> <div class="warn-icon">${w.level==='lvl-red'?'!':(w.level==='lvl-orange'?'!':'i')}</div> <div class="warn-content"> <div class="w-title">${w.title}</div> ${w.when ? <div class="w-when">${w.when}</div>:''} ${w.desc ? <div class="w-desc">${w.desc}</div>:''} </div> </div>; } async function loadWarnings(){ const list = document.getElementById('warn-list'); list.innerHTML = '<div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div>'; try{ const url = PROXY + encodeURIComponent(FMI_RSS_FI) + '&_=' + Date.now(); const r = await fetchWithTimeout(url, 12000); if(!r.ok) throw new Error('FMI '+r.status); const xml = await r.text(); const doc = new DOMParser().parseFromString(xml, 'text/xml'); const items = Array.from(doc.querySelectorAll('item')).map(it=>{ const title = it.querySelector('title')?.textContent?.trim() || 'Varoitus'; const desc = it.querySelector('description')?.textContent?.trim() || ''; const pub = it.querySelector('pubDate')?.textContent?.trim() || ''; let when=''; try{ when = pub ? new Date(pub).toLocaleString('fi-FI') : '' }catch(_){} const level = sevClassFromText(title + ' ' + desc); return {title, desc, when, level}; }); const kuAll = items.filter(x => /Nurmij|Keski-?Uusimaa|Hyvink|Järvenpää|Tuusula|Kerava|Mäntsälä|Pornainen|Klaukkala|Vantaa/i.test(x.title + ' ' + x.desc)); const limitKU = IS_MOBILE ? 10 : 5; const limitFI = IS_MOBILE ? 10 : 5; const ku = kuAll.slice(0,limitKU); const fi = items.slice(0,limitFI); if (!ku.length && !fi.length){ list.innerHTML = '<div class="warn-item"><div class="warn-content">Ei voimassa olevia varoituksia</div></div>'; return; } let html = ''; if (ku.length){ html += <div class="warn-item" style="background:#eef3f8"><div class="warn-content"><div class="w-title">Keski-Uusimaa</div></div></div>; html += ku.map(warnItemHtml).join(''); } if (fi.length){ html += <div class="warn-item" style="background:#eef3f8"><div class="warn-content"><div class="w-title">Koko Suomi</div></div></div>; html += fi.map(warnItemHtml).join(''); } list.innerHTML = html; }catch{ list.innerHTML = '<div class="warn-item"><div class="warn-content">Varoituksia ei voitu hakea</div></div>'; } } /* ===================== TILANNEHUONE – “viimeiset 24h” ===================== */ /* Haetaan pääsivun listaus ja parsitaan tekstit ulos. Näytetään max 20 kpl. */ const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now(); /* Keveä “siivous”: poista skriptit/tyylit, korvaa monilyönnit välilyönnillä */ function cleanHtmlToText(html){ const tmp = document.createElement('div'); tmp.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,''); const text = tmp.textContent || tmp.innerText || ''; return text.replace(/\u00AD/g,'') // pehmeä tavuviiva pois .replace(/\s+/g,' ') .trim(); } /* Parsitaan rivit malliin: "Vantaa 28.08.2025 15:57:36 tieliikenneonnettomuus: pieni" Palautetaan {city, time:Date, kind, level} */ function parseTilanne(text){ const results = []; const re = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+([^\n\r]+?)(?=\s+[A-ZÅÄÖ]|$)/g; let m; while ((m = re.exec(text)) !== null) { const city = m[1].trim(); const date = m[2].trim(); const time = m[3].trim(); const tail = m[4].trim(); // erottele "kuvaus: taso" jos löytyy let kind = tail; let level = ''; const lv = tail.match(/:\s*(pieni|keskisuuri|suuri)\b/i); if (lv) { level = lv[1].toLowerCase(); kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim(); } // Aikaleima const [d,mo,y] = date.split('.'); const ts = new Date(${y}-${mo}-${d}T${time.length===5?time+':00':time}); if (!isNaN(ts.getTime())) { results.push({ city, time: ts, kind, level }); } } return results; } /* Isompi fontti isommalle tasolle */ function levelClass(level){ const l = (level||'').toLowerCase(); if (l.includes('suuri')) return 'sev-large'; if (l.includes('keskisuuri')) return 'sev-medium'; return 'sev-small'; } function capitalFirst(s){ return (s||'').charAt(0).toUpperCase() + (s||'').slice(1); } async function loadTilannehuone(){ const box = document.getElementById('th-list'); if (!box) return; box.innerHTML = '<div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div>'; try{ const r = await fetchWithTimeout(TH_URL(), 15000); const html = await r.text(); if (!r.ok) throw new Error('HTTP ' + r.status); const text = cleanHtmlToText(html); // Parsitaan let items = parseTilanne(text); // Suodata viimeiseen 24h, järjestä uusin ensin const now = Date.now(); const dayMs = 24*60*60*1000; items = items .filter(it => (now - it.time.getTime()) <= dayMs) .sort((a,b)=>b.time - a.time) .slice(0,20); if (!items.length){ box.innerHTML = '<div class="th-item"><div class="th-title">Ei tuoreita hälytyksiä</div></div>'; return; } // Renderöi box.innerHTML = items.map(it=>{ const ended = (now - it.time.getTime()) > 3*60*60*1000; // > 3 h => “Tilanne ohi” const timeText = it.time.toLocaleString('fi-FI'); const sevCls = levelClass(it.level); const levelTxt = it.level ? <span class="th-sev ${sevCls}">(${capitalFirst(it.level)})</span> : ''; const titleTxt = capitalFirst(it.kind || 'Hälytys'); return <div class="th-item"> <div class="th-top"> <div class="th-city">${it.city}</div> <div class="th-time">${timeText}</div> </div> <div class="th-title">${titleTxt}${levelTxt}</div> ${ended ? <div class="th-ended"><strong>Tilanne ohi</strong></div> : ''} </div>; }).join(''); }catch(e){ console.error('Tilannehuone:', e); box.innerHTML = '<div class="th-item"><div class="th-title">Hälytyksiä ei voitu hakea</div></div>'; } } /* ===================== INIT + PÄIVITYKSET ===================== */ async function init(){ // Tapahtumat const ev = await loadICS(ICS_URL()); renderEvents('miehisto-events', ev); // Sää + varoitukset await loadFmiWeather(); await loadWarnings(); // Tilannehuone await loadTilannehuone(); // Päivityssyklit setInterval(async ()=>{ const e=await loadICS(ICS_URL()); renderEvents('miehisto-events', e); }, 5*60*1000); setInterval(loadFmiWeather, 10*60*1000); setInterval(loadWarnings, 10*60*1000); setInterval(loadTilannehuone, 5*60*1000); } init(); </script> </body> </html>
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8" />
+<title>Aulan näyttö – Tapahtumat • Sää • Tilannehuone</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root{
+    --gap: 16px;
+    --panel-pad: 16px;
+    --header-h: 64px;
+    --accent: #007b83;         /* yhtenäinen tehosteväri */
+    --slide-time-ms: 20000;    /* 20 s per näkymä */
+  }
+  html,body{
+    margin:0;height:100vh;width:100vw;background:#e9eef3;color:#111;
+    font-family:"Segoe UI",Tahoma,Verdana,sans-serif;overflow:hidden;
+    -webkit-text-size-adjust:100%;
+    touch-action: manipulation;
+  }
+  #clock{
+    position:fixed;top:10px;right:16px;font-size:1.1rem;font-weight:700;
+    background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:8px;z-index:10
+  }
+
+  /* SLIDES */
+  .slides{height:100%;width:100%;position:relative}
+  .slide{
+    position:absolute;inset:0;background:#fff;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.15);
+    display:grid;grid-template-rows:var(--header-h) 1fr;overflow:hidden;opacity:0;pointer-events:none;transform:scale(.985);
+    transition:opacity .35s ease, transform .35s ease;margin:var(--gap);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .slide.active{opacity:1;pointer-events:auto;transform:scale(1)}
+  .slide-header{
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.5rem;color:#fff;background:var(--accent);
+    user-select:none;
+  }
+  .slide-body{
+    background:#f2f6fa;padding:var(--panel-pad);
+    overflow:hidden;              /* desktop: ei scrollia */
+    -webkit-overflow-scrolling:auto;
+  }
+
+  /* ======= TAPAHTUMAT ======= */
+  .events .slide-header{background:var(--accent)}
+  .events-list{display:grid;gap:12px}
+  .event-card{
+    background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);
+    padding:12px 14px
+  }
+  .event-date{
+    font-weight:800;color:#fff;border-radius:8px;display:inline-block;padding:5px 10px;margin-bottom:6px
+  }
+  .event-title{font-weight:800;font-size:1.18rem;word-break:break-word}
+  .event-description{margin-top:6px;color:#333;font-size:1.02rem}
+
+  /* 1920×1080: ~5 korttia ilman scrollia (desktop) */
+  @media (min-width: 1025px){
+    .events-list{grid-auto-rows:minmax(0,1fr)}
+    .event-card{padding:14px 16px}
+    .event-title{font-size:1.22rem}
+  }
+
+  /* ======= SÄÄ + VAROITUKSET ======= */
+  .wx-alerts .slide-header{background:var(--accent)}
+  .wx-grid{
+    height:100%;
+    max-width:1600px; margin:0 auto;
+    display:grid; gap:16px;
+    grid-template-rows:auto auto 1fr; /* sää, ennuste, varoitukset täyttää lopun */
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "wx"
+      "fc"
+      "warn";
+  }
+  .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
+  .panel-h{height:48px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px;background:var(--accent)}
+  .panel-b{background:#f2f6fa;padding:12px}
+
+  .p-wx   {grid-area: wx}
+  .p-fc   {grid-area: fc}
+  .p-warn {grid-area: warn}
+
+  /* Sääkortti */
+  .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:10px}
+  .w-city{font-size:1.2rem;font-weight:900}
+  .w-temp{font-size:2.2rem;font-weight:900}
+  .w-row{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}
+  .w-badge{background:#eef3f8;border-radius:8px;padding:6px 10px}
+  .w-icon{font-size:1.6rem;margin-left:6px}
+  .muted{opacity:.7}
+
+  /* Ennuste (kompakti) */
+  .forecast{display:grid;gap:10px;grid-template-columns:repeat(6,1fr)}
+  .fc-item{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 6px rgba(0,0,0,.12);text-align:center}
+  .fc-time{font-weight:800;margin-bottom:4px}
+  .fc-temp{font-size:1.05rem;font-weight:900}
+  .fc-sub{font-size:.92rem;color:#333;margin-top:2px}
+
+  /* Varoitukset – määrä rajataan JS:ssä */
+  .warn-list{display:grid;gap:10px}
+  .warn-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;grid-template-columns:28px 1fr;gap:10px}
+  .warn-icon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900}
+  .warn-content{display:grid;gap:4px}
+  .w-title{font-weight:800}
+  .w-when{font-size:.95rem;opacity:.8}
+  .w-desc{font-size:.98rem}
+  .lvl-yellow .warn-icon{background:#f2c744;color:#1d1d1f}
+  .lvl-orange .warn-icon{background:#ff9800}
+  .lvl-red    .warn-icon{background:#e53935}
+
+  /* ======= TILANNEHUONE ======= */
+  .tilanne .slide-header{background:var(--accent)}
+  .th-list{display:grid;gap:12px}
+  .th-card{
+    background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);
+    padding:12px 14px
+  }
+  .th-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:4px}
+  .th-city{font-weight:900}
+  .th-time{color:#444;font-weight:600}
+  .th-title{font-weight:900;line-height:1.2}
+  /* kokoluokan mukaan säädettävä – väri pidetään teemassa, ei punaista */
+  .sev-small  .th-title{font-size:1.12rem}
+  .sev-medium .th-title{font-size:1.24rem}
+  .sev-large  .th-title{font-size:1.34rem}
+
+  /* ======= ASSET DIAT (kuva/pdf/html) ======= */
+  .slide.asset .slide-header{ background: var(--accent); }
+  .slide.asset .slide-body{
+    display: grid;
+    place-items: center;
+    overflow: hidden;             /* desktop: ei scrollia */
+    background: #000;             /* parempi tausta kuville/pdf:lle */
+  }
+  .asset-wrap{
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    background: #000;
+  }
+  .asset-wrap img{
+    max-width: 100%;
+    max-height: 100%;
+    height: auto;
+    object-fit: contain;
+    background: #000;
+  }
+  .asset-wrap iframe{
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #fff;
+  }
+
+  /* ======= MOBIILI / TABLET ======= */
+  @media (max-width: 1024px){
+    #clock{display:none}
+    .slide-body{
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior: contain;
+      max-height: calc(100vh - var(--header-h) - 2*var(--gap));
+    }
+    .forecast{grid-template-columns:repeat(3,1fr)}
+    .wx-grid{height:auto; max-width:none}
+    .slide.asset .slide-body{ overflow:auto; -webkit-overflow-scrolling:touch; }
+  }
+</style>
+</head>
+<body>
+
+<div id="clock"></div>
+
+<div class="slides" id="slides">
+  <!-- 1) TAPAHTUMAT -->
+  <section class="slide events active" id="slide-events" aria-label="Miehistön Tapahtumat">
+    <div class="slide-header">Miehistön Tapahtumat</div>
+    <div class="slide-body">
+      <div id="miehisto-events" class="events-list">
+        <div class="event-card"><div class="event-title">Ladataan tapahtumia…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2) SÄÄ + VAROITUKSET -->
+  <section class="slide wx-alerts" id="slide-wx" aria-label="Sää ja varoitukset">
+    <div class="slide-header">Sää ja varoitukset</div>
+    <div class="slide-body">
+      <div class="wx-grid">
+        <div class="panel p-wx">
+          <div class="panel-h">Nykyinen sää</div>
+          <div class="panel-b">
+            <div id="wx-card" class="weather-card">
+              <div class="w-city">Klaukkalan Metsäkylä</div>
+              <div class="w-temp muted">…</div>
+              <div class="w-row"><span class="w-badge">Ladataan FMI-säätietoja…</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel p-fc">
+          <div class="panel-h">Seuraavat tunnit</div>
+          <div class="panel-b">
+            <div id="wx-forecast" class="forecast"></div>
+          </div>
+        </div>
+        <div class="panel p-warn">
+          <div class="panel-h">Varoitukset (FMI)</div>
+          <div class="panel-b">
+            <div id="warn-list" class="warn-list">
+              <div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- .wx-grid -->
+    </div>
+  </section>
+
+  <!-- 3) TILANNEHUONE -->
+  <section class="slide tilanne" id="slide-tilanne" aria-label="Tilannehuone">
+    <div class="slide-header">Tilannehuone</div>
+    <div class="slide-body">
+      <div id="th-list" class="th-list">
+        <div class="th-card"><div class="th-title">Ladataan hälytyksiä…</div></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ical.js tapahtumille -->
+<script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
+<script>
+/* ===================== YLEISET ===================== */
+const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← VAIHDA omaan Worker-osoitteeseesi
+const SLIDES = ['slide-events','slide-wx','slide-tilanne'];  // 3 perusdia (asset-diat lisätään perään jos löytyvät)
+let   slideIndex = 0;
+const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
+
+function tickClock(){
+  const now = new Date();
+  const el = document.getElementById('clock');
+  if (el) {
+    el.textContent =
+      now.toLocaleDateString('fi-FI',{weekday:'long', day:'numeric', month:'long'})+' '+
+      now.toLocaleTimeString('fi-FI',{hour:'2-digit', minute:'2-digit'});
+  }
+}
+setInterval(tickClock, 1000); tickClock();
+
+function showSlide(i){
+  SLIDES.forEach((id,idx)=>{
+    const el = document.getElementById(id);
+    if (el) {
+      if (idx===i){ el.classList.add('active'); } else { el.classList.remove('active'); }
+    }
+  });
+}
+let autoTimer = setInterval(()=>{
+  slideIndex = (slideIndex + 1) % SLIDES.length;
+  showSlide(slideIndex);
+}, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
+
+/* ===== Swipe-eleet diojen vaihtoon ===== */
+(function enableSwipe(){
+  const container = document.getElementById('slides');
+  if (!container) return;
+
+  let touchStartX = 0, touchStartY = 0;
+  let touchMoved = false;
+  let scrolling = false;
+  const H_THRESHOLD = 50;
+  const V_TOLERANCE = 30;
+
+  container.addEventListener('touchstart', (e)=>{
+    if (!e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+    touchMoved = false;
+    scrolling = false;
+  }, {passive:true});
+
+  container.addEventListener('touchmove', (e)=>{
+    if (!e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    if (Math.abs(dy) > V_TOLERANCE) { scrolling = true; return; }
+    if (Math.abs(dx) > 5) touchMoved = true;
+  }, {passive:true});
+
+  container.addEventListener('touchend', (e)=>{
+    if (scrolling || !touchMoved) return;
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - touchStartX;
+    if (Math.abs(dx) > H_THRESHOLD) {
+      clearInterval(autoTimer);
+      if (dx < 0) slideIndex = (slideIndex + 1) % SLIDES.length;
+      else slideIndex = (slideIndex - 1 + SLIDES.length) % SLIDES.length;
+      showSlide(slideIndex);
+      autoTimer = setInterval(()=>{
+        slideIndex = (slideIndex + 1) % SLIDES.length;
+        showSlide(slideIndex);
+      }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
+    }
+  }, {passive:true});
+})();
+
+/* Apurit */
+async function fetchWithTimeout(url, ms=12000, opts={}){
+  const ctrl = new AbortController(); const id = setTimeout(()=>ctrl.abort(), ms);
+  try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store', ...opts}); clearTimeout(id); return r; }
+  catch(e){ clearTimeout(id); throw e; }
+}
+function stripLinks(html) {
+  if (!html) return '';
+  const div = document.createElement('div'); div.innerHTML = html;
+  div.querySelectorAll('a').forEach(a => a.remove());
+  return (div.textContent || div.innerText || '').replace(/https?:\/\/\S+/g, '').trim();
+}
+
+/* ===================== TAPAHTUMAT (Nimenhuuto ICS) ===================== */
+const ICS_URL = () => PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical') + '&_=' + Date.now();
+
+function cleanTitle(title) {
+  if (!title) return '';
+  const m = title.match(/(?:–|:)\s*(.+)$/);
+  if (m && m[1]) return m[1].trim();
+  return title.replace(/^Metsäkylän VPK\s*[-–:]?\s*/i, '').trim();
+}
+function getDateColor(summary) {
+  const t = (summary || '').toLowerCase();
+  if (t.includes('auto')) return '#fc832f';
+  if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f';
+  if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638';
+  if (t.includes('päätös')) return '#fcd854';
+  if (t.includes('kokous')) return '#fcd854';
+  if (t.includes('retki')) return '#fcd854';
+  if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638';
+  if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638';
+  if (t.includes('juhla')) return '#7ab638';
+  return '#2178a1';
+}
+function formatEventDate(sDate, eDate, allDay=false) {
+  const s = new Date(sDate), e = new Date(eDate);
+  const same = s.toDateString() === e.toDateString();
+  if (allDay) {
+    return same ? s.toLocaleDateString('fi-FI')
+                : `${s.toLocaleDateString('fi-FI')} – ${e.toLocaleDateString('fi-FI')}`;
+  } else if (same) {
+    return `${s.toLocaleDateString('fi-FI')} klo ${s.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${e.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
+  } else {
+    return `${s.toLocaleDateString('fi-FI')} klo ${s.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})} – ${e.toLocaleDateString('fi-FI')} klo ${e.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`;
+  }
+}
+async function loadICS(url) {
+  try {
+    const res = await fetchWithTimeout(url, 12000);
+    if (!res.ok) return { items: [], error: `ICS: ${res.status}` };
+    const text = await res.text();
+    const jcal = ICAL.parse(text);
+    const comp = new ICAL.Component(jcal);
+    const vevents = comp.getAllSubcomponents('vevent').map(ve => new ICAL.Event(ve));
+    const now = new Date();
+    const LIMIT = IS_MOBILE ? 12 : 5;
+    const items = vevents
+      .filter(ev => ev.endDate && ev.endDate.toJSDate() > now)
+      .map(ev => ({
+        summary: ev.summary || '',
+        description: ev.description || '',
+        startDate: ev.startDate.toJSDate(),
+        endDate: ev.endDate.toJSDate(),
+        allDay: ev.startDate.isDate && ev.endDate.isDate
+      }))
+      .sort((a,b)=>a.startDate-b.startDate)
+      .slice(0, LIMIT);
+    return { items };
+  } catch (e) {
+    return { items: [], error: e.name === 'AbortError' ? 'Aikakatkaisu' : 'Verkkovirhe' };
+  }
+}
+function renderEvents(containerId, payload) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  const { items, error } = payload;
+  if (error) { c.innerHTML = `<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div><div class="event-description">${error}</div></div>`; return; }
+  if (!items || !items.length){ c.innerHTML = `<div class="event-card"><div class="event-title">Ei tulevia tapahtumia</div></div>`; return; }
+  items.forEach(it=>{
+    const card = document.createElement('div'); card.className='event-card';
+    const date = document.createElement('div'); date.className='event-date'; date.style.background=getDateColor(it.summary);
+    date.textContent = formatEventDate(it.startDate, it.endDate, it.allDay);
+    const title=document.createElement('div'); title.className='event-title'; title.textContent = cleanTitle(it.summary);
+    card.appendChild(date); card.appendChild(title);
+    if (it.description){ const d=document.createElement('div'); d.className='event-description'; d.textContent=stripLinks(it.description); card.appendChild(d); }
+    c.appendChild(card);
+  });
+}
+
+/* ===================== SÄÄ (FMI WFS – HARMONIE/TVP) ===================== */
+const KL = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 };
+
+function wxEmoji(symbol){
+  const s = Number(symbol);
+  if ([1].includes(s)) return '☀️';
+  if ([2,21,22].includes(s)) return '🌤️';
+  if ([3,31,32,33].includes(s)) return '⛅';
+  if ([4].includes(s)) return '☁️';
+  if ([5,6,7,8,9,10].includes(s)) return '🌧️';
+  if ([11,12,13,14].includes(s)) return '❄️';
+  if ([15,16,17,18,19,20].includes(s)) return '⛈️';
+  return '🌡️';
+}
+function parseFmiTVP(xmlText){
+  const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+  const series = Array.from(doc.getElementsByTagNameNS('*','MeasurementTimeseries'));
+  const outMap = new Map();
+  series.forEach(ts=>{
+    const id = (ts.getAttribute('gml:id')||'').toLowerCase();
+    const key =
+      id.includes('temperature')      ? 'T'  :
+      id.includes('windspeedms')      ? 'WS' :
+      id.includes('precipitation1h')  ? 'RR' :
+      id.includes('weathersymbol3')   ? 'SYM': null;
+    if (!key) return;
+    Array.from(ts.getElementsByTagNameNS('*','MeasurementTVP')).forEach(tvp=>{
+      const time = tvp.getElementsByTagNameNS('*','time')[0]?.textContent;
+      const val  = tvp.getElementsByTagNameNS('*','value')[0]?.textContent;
+      if (!time || val==null) return;
+      const iso = new Date(time).toISOString();
+      if (!outMap.has(iso)) outMap.set(iso, { time:new Date(time) });
+      const rec = outMap.get(iso);
+      rec[key] = Number(val);
+    });
+  });
+  return Array.from(outMap.values()).sort((a,b)=>a.time-b.time);
+}
+async function loadFmiWeather(){
+  const card = document.getElementById('wx-card');
+  const forecastBox = document.getElementById('wx-forecast');
+  card.innerHTML = `
+    <div class="w-city">${KL.name}</div>
+    <div class="w-temp muted">…</div>
+    <div class="w-row"><span class="w-badge">Ladataan FMI-säätietoja…</span></div>`;
+
+  try{
+    const base = 'https://opendata.fmi.fi/wfs';
+    const now  = new Date();
+    const end  = new Date(now.getTime() + 9*60*60*1000); // +9h
+    const params = new URLSearchParams({
+      service:'WFS',
+      version:'2.0.0',
+      request:'GetFeature',
+      storedquery_id:'fmi::forecast::harmonie::surface::point::timevaluepair',
+      latlon:`${KL.lat},${KL.lon}`,
+      parameters:'temperature,windSpeedMS,WeatherSymbol3,precipitation1h',
+      starttime: now.toISOString(),
+      endtime:   end.toISOString(),
+      timestep:  '60'
+    });
+    const url = PROXY + encodeURIComponent(`${base}?${params.toString()}`) + '&_=' + Date.now();
+    const r = await fetchWithTimeout(url, 15000);
+    if (!r.ok) throw new Error('FMI ' + r.status);
+    const xml = await r.text();
+    const rows = parseFmiTVP(xml);
+    if (!rows.length) throw new Error('FMI: tyhjä vastaus');
+
+    const nowMs = Date.now();
+    let current = rows.reduce((best,rec)=>{
+      const d = Math.abs(rec.time - nowMs);
+      return (best==null || d < best.d) ? { rec, d } : best;
+    }, null)?.rec || rows[0];
+
+    const temp = isFinite(current.T)? Math.round(current.T) : '–';
+    const wind = isFinite(current.WS)? Math.round(current.WS) : '–';
+    const rain = isFinite(current.RR)? current.RR.toFixed(1) : '–';
+    const sym  = current.SYM!=null ? wxEmoji(current.SYM) : '🌡️';
+
+    card.innerHTML = `
+      <div class="w-city">${KL.name}</div>
+      <div class="w-temp">${temp}°C <span class="w-icon">${sym}</span></div>
+      <div class="w-row">
+        <span class="w-badge">Tuuli ${wind} m/s</span>
+        <span class="w-badge">Sade ${rain} mm/h</span>
+        <span class="w-badge">Klo ${current.time.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}</span>
+      </div>`;
+
+    const upcoming = rows.filter(r => r.time > current.time).slice(0,6);
+    forecastBox.innerHTML = upcoming.map(r=>`
+      <div class="fc-item">
+        <div class="fc-time">${r.time.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}</div>
+        <div class="fc-temp">${isFinite(r.T)? Math.round(r.T)+'°C':'–'}</div>
+        <div class="fc-sub">${wxEmoji(r.SYM||0)} ${isFinite(r.RR)? r.RR.toFixed(1):'–'} mm/h • ${isFinite(r.WS)? Math.round(r.WS):'–'} m/s</div>
+      </div>
+    `).join('');
+  }catch(e){
+    card.innerHTML = `
+      <div class="w-city">${KL.name}</div>
+      <div class="w-temp">–</div>
+      <div class="w-row"><span class="w-badge">FMI-säätietoja ei voitu hakea</span></div>`;
+    document.getElementById('wx-forecast').innerHTML = '';
+  }
+}
+
+/* ===================== VAROITUKSET (FMI CAP RSS) ===================== */
+const FMI_RSS_FI = 'https://alerts.fmi.fi/cap/feed/rss_fi-FI.rss';
+function sevClassFromText(txt){
+  const t=(txt||'').toLowerCase();
+  if (t.includes('punainen')||t.includes('red')) return 'lvl-red';
+  if (t.includes('oranssi')||t.includes('orange')) return 'lvl-orange';
+  if (t.includes('keltainen')||t.includes('yellow')) return 'lvl-yellow';
+  return '';
+}
+function warnItemHtml(w){
+  return `<div class="warn-item ${w.level}">
+    <div class="warn-icon">${w.level==='lvl-red'?'!':(w.level==='lvl-orange'?'!':'i')}</div>
+    <div class="warn-content">
+      <div class="w-title">${w.title}</div>
+      ${w.when ? `<div class="w-when">${w.when}</div>`:''}
+      ${w.desc ? `<div class="w-desc">${w.desc}</div>`:''}
+    </div>
+  </div>`;
+}
+async function loadWarnings(){
+  const list = document.getElementById('warn-list');
+  list.innerHTML = '<div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div>';
+  try{
+    const url = PROXY + encodeURIComponent(FMI_RSS_FI) + '&_=' + Date.now();
+    const r = await fetchWithTimeout(url, 12000); if(!r.ok) throw new Error('FMI '+r.status);
+    const xml = await r.text();
+    const doc = new DOMParser().parseFromString(xml, 'text/xml');
+    const items = Array.from(doc.querySelectorAll('item')).map(it=>{
+      const title = it.querySelector('title')?.textContent?.trim() || 'Varoitus';
+      const desc  = it.querySelector('description')?.textContent?.trim() || '';
+      const pub   = it.querySelector('pubDate')?.textContent?.trim() || '';
+      let when=''; try{ when = pub ? new Date(pub).toLocaleString('fi-FI') : '' }catch(_){}
+      const level = sevClassFromText(title + ' ' + desc);
+      return {title, desc, when, level};
+    });
+
+    const kuAll = items.filter(x => /Nurmij|Keski-?Uusimaa|Hyvink|Järvenpää|Tuusula|Kerava|Mäntsälä|Pornainen|Klaukkala|Vantaa/i.test(x.title + ' ' + x.desc));
+    const limitKU = IS_MOBILE ? 10 : 5;
+    const limitFI = IS_MOBILE ? 10 : 5;
+
+    const ku = kuAll.slice(0,limitKU);
+    const fi = items.slice(0,limitFI);
+
+    if (!ku.length && !fi.length){
+      list.innerHTML = '<div class="warn-item"><div class="warn-content">Ei voimassa olevia varoituksia</div></div>';
+      return;
+    }
+    let html = '';
+    if (ku.length){
+      html += `<div class="warn-item" style="background:#eef3f8"><div class="warn-content"><div class="w-title">Keski-Uusimaa</div></div></div>`;
+      html += ku.map(warnItemHtml).join('');
+    }
+    if (fi.length){
+      html += `<div class="warn-item" style="background:#eef3f8"><div class="warn-content"><div class="w-title">Koko Suomi</div></div></div>`;
+      html += fi.map(warnItemHtml).join('');
+    }
+    list.innerHTML = html;
+  }catch{
+    list.innerHTML = '<div class="warn-item"><div class="warn-content">Varoituksia ei voitu hakea</div></div>';
+  }
+}
+
+/* ===================== TILANNEHUONE (lista) ===================== */
+const FOCUS_PLACES = [
+  'Nurmijärvi','Klaukkala','Rajamäki','Kirkonkylä',
+  'Vantaa','Helsinki','Espoo','Kauniainen',
+  'Hyvinkää','Järvenpää','Kerava','Tuusula','Mäntsälä',
+  'Vihti','Kirkkonummi','Sipoo'
+];
+function toSentenceCase(s){
+  if(!s) return '';
+  s = s.trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function severityFromText(txt){
+  const t=(txt||'').toLowerCase();
+  if (t.includes('suuri')) return 'large';
+  if (t.includes('keskisuuri')) return 'medium';
+  return 'small';
+}
+function sevClass(sev){
+  return sev==='large' ? 'sev-large' : (sev==='medium' ? 'sev-medium' : 'sev-small');
+}
+function cleanupTaskText(s){
+  if(!s) return '';
+  // poista häiritseviä fraaseja
+  return s
+    .replace(/Avaa tehtäväsivu.+$/i,'')
+    .replace(/Lisätty:.+$/i,'')
+    .replace(/Silminnäkijähavainto:.+$/i,'')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function isFocusPlace(name){
+  if(!name) return false;
+  const n = name.trim().toLowerCase();
+  return FOCUS_PLACES.some(p => n === p.toLowerCase());
+}
+
+/* ===================== TILANNEHUONE (tilannehuone.fi) – robusti parseri ===================== */
+async function loadTilannehuone(){
+  const box = document.getElementById('th-list');
+  box.innerHTML = '<div class="th-card"><div class="th-title">Ladataan hälytyksiä…</div></div>';
+
+  const INACTIVE_AFTER_HOURS = 4;
+  const LIMIT = 20;
+
+  const toSentenceCase = s => s ? s.trim().replace(/^./, c => c.toUpperCase()) : '';
+  const cleanupTaskText = s => (s||'')
+    .replace(/Avaa tehtäväsivu.+$/i,'')
+    .replace(/Lisätty:.+$/i,'')
+    .replace(/Silminnäkijähavainto:.+$/i,'')
+    .replace(/\s+/g,' ')
+    .trim();
+  const severityFromText = size => {
+    const t = (size||'').toLowerCase();
+    if (t.includes('suuri')) return 'large';
+    if (t.includes('keskisuuri')) return 'medium';
+    return 'small';
+  };
+  const sevClass = s => s==='large' ? 'sev-large' : (s==='medium' ? 'sev-medium' : 'sev-small');
+
+  try{
+   // VANHA (rikki): 
+// const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/lista.php?list=disorder') + '&_=' + Date.now();
+
+// UUSI (sama sivusto, 24h-lista):
+const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
+
+    const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/lista.php?list=disorder') + '&_=' + Date.now();
+    const html = await fetchWithTimeout(url, 15000).then(r=>r.text());
+    console.debug('[Tilannehuone] fetched HTML head:', (html||'').slice(0,200));
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    // Yritä 1: DOM-rakenne (taulukko/luettelo)
+    const rows = [];
+    const addRow = (city, timeStr, task) => {
+      if (!city && !timeStr && !task) return;
+      let txt = cleanupTaskText(task||'');
+      // poimi koko ja poista se itse tekstistä
+      const sizeMatch = txt.match(/\b(pieni|keskisuuri|suuri)\b/i);
+      const sizeTxt = sizeMatch ? sizeMatch[1].toLowerCase() : 'pieni';
+      txt = txt.replace(/\b(pieni|keskisuuri|suuri)\b/i,'').replace(/[,:]\s*$/,'').trim();
+
+      // Aika -> Date (yritetään “dd.mm.yyyy HH:MM(:SS)?”)
+      let dt = null, timePretty = timeStr||'';
+      const m = (timeStr||'').match(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+      if (m){
+        const dd=+m[1], mm=+m[2], yyyy=+m[3], HH=+m[4], MM=+m[5], SS=+(m[6]||0);
+        dt = new Date(yyyy,mm-1,dd,HH,MM,SS);
+        timePretty = `${('0'+dd).slice(-2)}.${('0'+mm).slice(-2)}.${yyyy} ${('0'+HH).slice(-2)}:${('0'+MM).slice(-2)}${SS?':'+('0'+SS).slice(-2):''}`;
+      }
+      const inactive = /tilanne\s*ohi/i.test(txt) || (dt && (Date.now()-dt.getTime()) > INACTIVE_AFTER_HOURS*60*60*1000);
+      rows.push({ city: (city||'').trim(), timeStr: timePretty || (timeStr||'').trim(), dt, task: txt, size: sizeTxt, inactive });
+    };
+
+    // 1a) Taulukkomuotoinen?
+    const tableRows = doc.querySelectorAll('table tr, .table tr, tbody tr');
+    if (tableRows.length){
+      tableRows.forEach(tr=>{
+        const tds = tr.querySelectorAll('td,th');
+        if (tds.length >= 3){
+          const city = tds[0].innerText.trim();
+          const time = tds[1].innerText.trim();
+          const task = tds[2].innerText.trim();
+          if (/\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}/.test(time)) addRow(city,time,task);
+        }
+      });
+    }
+
+    // 1b) Listamuotoinen?
+    if (!rows.length){
+      const items = doc.querySelectorAll('li, .list-group-item, .event, .row');
+      items.forEach(el=>{
+        const txt = el.innerText.replace(/\s+/g,' ').trim();
+        // Etsi kaupunki + aikaleima
+        const m = txt.match(/^\s*([A-ZÅÄÖa-zåäö\-.(),\s]{2,60})\s+(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?)\s+(.*)$/);
+        if (m) addRow(m[1], m[2], m[3]);
+      });
+    }
+
+    // Yritä 2: Sisällön “innerText” ja regex
+    if (!rows.length){
+      let text = (doc.body?.innerText || '')
+        .replace(/\r/g,'').replace(/\t/g,' ')
+        .replace(/\u00A0/g,' ').replace(/\u00AD/g,'')
+        .replace(/[ ]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+
+      // Pääregex: "Kaupunki[, alue]  dd.mm.yyyy hh:mm(:ss)  tehtävä…"
+      const reMain = /([A-ZÅÄÖa-zåäö][A-ZÅÄÖa-zåäö\-\.\s,()]{1,60})\s+(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?)\s+([^|]+?)(?=(?:\s+[A-ZÅÄÖa-zåäö][A-ZÅÄÖa-zåäö\-\.\s,()]{1,60}\s+\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})|$)/g;
+      let m;
+      while ((m = reMain.exec(text)) !== null) addRow(m[1], m[2], m[3]);
+
+      // Varapolku: rivi-rakenne (City \n datetime \n task)
+      if (!rows.length){
+        const lines = text.split('\n').map(s=>s.trim()).filter(Boolean);
+        for (let i=0;i<lines.length-2;i++){
+          const C = lines[i], D = lines[i+1], T = lines[i+2];
+          if (/^\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?$/.test(D)) addRow(C,D,T);
+        }
+      }
+    }
+
+    console.debug('[Tilannehuone] parsed rows:', rows.length);
+
+    // Jos ei mitään löytynyt, näytä info
+    if (!rows.length){
+      box.innerHTML = '<div class="th-card"><div class="th-title">Ei tuoreita hälytyksiä</div><div class="event-description">Tietojen muoto on muuttunut tai haku estetty. Tarkista PROXY/Worker.</div></div>';
+      return;
+    }
+
+    // Lajittelu (uusin → vanhin), ensisijaisesti 24h sisään; jos tyhjä, käytä kuitenkin uusimmat
+    const byTimeDesc = (a,b) => (b.dt?.getTime()||0) - (a.dt?.getTime()||0);
+    const now = Date.now();
+    let list = rows.filter(r => r.dt && (now - r.dt.getTime()) <= 24*60*60*1000).sort(byTimeDesc);
+    if (!list.length) list = rows.sort(byTimeDesc);
+    list = list.slice(0, LIMIT);
+
+    // Render
+    box.innerHTML = list.map(r=>{
+      const sev = severityFromText(r.size);
+      const inactiveFlag = r.inactive ? ' <span class="muted">— Tilanne ohi</span>' : '';
+      const title = `${toSentenceCase(r.task)} (${r.size})${inactiveFlag}`;
+      return `<div class="th-card ${sevClass(sev)}">
+        <div class="th-top">
+          <div class="th-city">${r.city || '—'}</div>
+          <div class="th-time">${r.timeStr || ''}</div>
+        </div>
+        <div class="th-title">${title}</div>
+      </div>`;
+    }).join('');
+
+  }catch(e){
+    console.error('Tilannehuone ERROR:', e);
+    box.innerHTML = '<div class="th-card"><div class="th-title">Tilannehuoneen tietoja ei voitu hakea</div></div>';
+  }
+}
+
+/* ===================== ASSET-DIAT (kuva/pdf/html) ===================== */
+const CUSTOM_ASSETS = [
+  // Lisää/poista näitä repoosi – jos tiedostoa ei löydy, diaa ei lisätä kiertoon
+  { type: 'img',  title: 'Infokuva',    src: './info.jpg' },
+  { type: 'pdf',  title: 'Ohjeistus',   src: './ohje.pdf#view=FitH&toolbar=0&navpanes=0' },
+  { type: 'page', title: 'Tiedotesivu', src: './tiedote.html' }
+];
+
+async function exists(url){
+  try{
+    const r = await fetch(url, { method:'HEAD', cache:'no-store' });
+    if (r.ok) return true;
+    const g = await fetchWithTimeout(url, 6000, { method:'GET' });
+    return g.ok;
+  }catch{ return false; }
+}
+async function filterExistingAssets(list){
+  const out = [];
+  for (const a of list){
+    if (!a || !a.src) continue;
+    try{
+      const ok = await exists(a.src);
+      if (ok) out.push(a);
+    }catch(_){}
+  }
+  return out;
+}
+async function addAssetSlides(){
+  const assets = await filterExistingAssets(CUSTOM_ASSETS);
+  if (!assets.length) return;
+
+  const root = document.querySelector('.slides');
+  if (!root) return;
+
+  assets.forEach((asset, idx) => {
+    const id = `slide-asset-${idx+1}`;
+    const sec = document.createElement('section');
+    sec.className = 'slide asset';
+    sec.id = id;
+    sec.setAttribute('aria-label', asset.title || 'Dia');
+
+    const header = document.createElement('div');
+    header.className = 'slide-header';
+    header.textContent = asset.title || 'Dia';
+
+    const body = document.createElement('div');
+    body.className = 'slide-body';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'asset-wrap';
+
+    const type = (asset.type || '').toLowerCase();
+    if (type === 'img') {
+      const img = document.createElement('img');
+      img.src = asset.src;
+      img.alt = asset.title || '';
+      wrap.appendChild(img);
+    } else if (type === 'pdf') {
+      const iframe = document.createElement('iframe');
+      iframe.src = asset.src;
+      wrap.appendChild(iframe);
+    } else {
+      const iframe = document.createElement('iframe');
+      iframe.src = asset.src;
+      wrap.appendChild(iframe);
+    }
+
+    body.appendChild(wrap);
+    sec.appendChild(header);
+    sec.appendChild(body);
+    root.appendChild(sec);
+
+    SLIDES.push(id); // lisää kiertoon
+  });
+}
+
+/* ===================== INIT + PÄIVITYKSET ===================== */
+async function init(){
+  // Lisää mahdolliset asset-diat (vain jos tiedostot löytyvät)
+  await addAssetSlides();
+
+  // Tapahtumat
+  const ev = await loadICS(ICS_URL());   renderEvents('miehisto-events', ev);
+  // Sää + varoitukset
+  await loadFmiWeather();
+  await loadWarnings();
+  // Tilannehuone
+  await loadTilannehuone();
+
+  // Päivityssyklit
+  setInterval(async ()=>{ const e=await loadICS(ICS_URL()); renderEvents('miehisto-events', e); }, 5*60*1000);
+  setInterval(loadFmiWeather,  10*60*1000);
+  setInterval(loadWarnings,    10*60*1000);
+  setInterval(loadTilannehuone, 2*60*1000);
+}
+init();
+</script>
+</body>
+</html>
+
+
+
