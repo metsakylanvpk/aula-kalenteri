@@ -44,7 +44,7 @@
 
   /* ======= TAPAHTUMAT ======= */
   .events .slide-header{background:var(--accent)}
-  .events-list{display:grid;gap:12px}
+  .events-list{display:grid;gap:12px;max-width:1600px;margin:0 auto}
   .event-card{
     background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);
     padding:12px 14px
@@ -109,42 +109,32 @@
 
   /* ======= TILANNEHUONE ======= */
   .tilanne .slide-header{background:var(--accent)}
-  .th-wrap{max-width:1600px;margin:0 auto;}            /* sama leveyslogiikka kuin säädialla */
+  .th-wrap{max-width:1600px; margin:0 auto; display:grid; gap:16px}
   .th-list{display:grid;gap:10px}
   .th-item{
     background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12);
-    transition:opacity .25s ease, transform .25s ease;
+    transition: opacity .2s ease;
+    font-size:1rem; /* peruskoko: pieni */
   }
-  .th-item.ended{ opacity:.55 }                        /* haalista päättyneet (heuristiikka) */
-
-  /* kortin sisältö: ikoni + sisältö */
-  .th-row{
-    display:grid;
-    grid-template-columns: 40px 1fr;
-    gap:10px;
-    align-items:start;
-  }
-  .th-icon{
-    width:40px;height:40px;border-radius:10px;
-    display:grid;place-items:center;
-    background:#eef3f8;
-    font-size:1.2rem;font-weight:900;user-select:none;
-  }
+  .th-item.sev-medium{font-size:1.06rem}
+  .th-item.sev-large{font-size:1.12rem}
+  .th-item.ended{opacity:.55}
 
   .th-top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
   .th-city{font-weight:900}
   .th-time{font-size:.95rem;opacity:.8}
-  .th-title{font-weight:800;margin-top:4px}
-  .th-sev{margin-left:6px;font-weight:900;opacity:.9}
-  .th-desc{margin-top:6px;color:#333}
-  .sev-small  {font-size:1.00rem}
-  .sev-medium {font-size:1.08rem}
-  .sev-large  {font-size:1.16rem}
+
+  .th-title{font-weight:800;margin-top:4px;display:flex;align-items:center;gap:8px}
+  .th-ico{font-size:1.25em;line-height:1}
+  .th-sev{margin-left:2px;font-weight:800;opacity:.9}
+
+  .th-desc{margin-top:8px;color:#333}
+  .th-desc div{margin:.5px 0}
 
   /* ======= ASSET DIAT ======= */
   .slide.asset .slide-header{ background: var(--accent); }
   .slide.asset .slide-body{
-    display:grid;place-items:center;overflow:hidden;background:#000;
+    display: grid; place-items: center; overflow: hidden; background: #000;
   }
   .asset-wrap{ width:100%; height:100%; display:grid; place-items:center; background:#000; }
   .asset-wrap img{ max-width:100%; max-height:100%; height:auto; object-fit:contain; background:#000; }
@@ -154,9 +144,7 @@
   @media (max-width: 1024px){
     #clock{display:none}
     .slide-body{
-      overflow:auto;
-      -webkit-overflow-scrolling:touch;
-      overscroll-behavior: contain;
+      overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior: contain;
       max-height: calc(100vh - var(--header-h) - 2*var(--gap));
     }
     .forecast{grid-template-columns:repeat(3,1fr)}
@@ -226,13 +214,13 @@
   </section>
 </div>
 
-<!-- ical.js -->
+<!-- ical.js tapahtumille -->
 <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
-/* ===================== YLEISET ===================== */
+/* =============== YLEISET =============== */
 const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';
-const SLIDES = ['slide-events','slide-wx','slide-tilanne'];  // asset-diat lisätään perään jos löytyvät
-let   slideIndex = 0;
+const SLIDES = ['slide-events','slide-wx','slide-tilanne'];
+let slideIndex = 0;
 const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
 
 function tickClock(){
@@ -249,9 +237,8 @@ setInterval(tickClock, 1000); tickClock();
 function showSlide(i){
   SLIDES.forEach((id,idx)=>{
     const el = document.getElementById(id);
-    if (el) {
-      if (idx===i){ el.classList.add('active'); } else { el.classList.remove('active'); }
-    }
+    if (!el) return;
+    if (idx===i){ el.classList.add('active'); } else { el.classList.remove('active'); }
   });
 }
 let autoTimer = setInterval(()=>{
@@ -301,7 +288,7 @@ function stripLinks(html) {
   return (div.textContent || div.innerText || '').replace(/https?:\/\/\S+/g, '').trim();
 }
 
-/* ===================== TAPAHTUMAT (Nimenhuuto ICS) ===================== */
+/* =============== TAPAHTUMAT (Nimenhuuto ICS) =============== */
 const ICS_URL = () => PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical') + '&_=' + Date.now();
 
 function cleanTitle(title) {
@@ -320,7 +307,7 @@ function getDateColor(summary) {
   if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638';
   if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638';
   if (t.includes('juhla')) return '#7ab638';
-  if (t.includes('retki')) return '#fcd854';  /* ← lisätty pyyntösi */
+  if (t.includes('retki')) return '#fcd854';        /* <-- lisäys toiveen mukaan */
   return '#2178a1';
 }
 function formatEventDate(sDate, eDate, allDay=false) {
@@ -379,7 +366,7 @@ function renderEvents(containerId, payload) {
   });
 }
 
-/* ===================== SÄÄ (FMI) ===================== */
+/* =============== SÄÄ (FMI) =============== */
 const KL = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 };
 
 function wxEmoji(symbol){
@@ -434,7 +421,8 @@ async function loadFmiWeather(){
       storedquery_id:'fmi::forecast::harmonie::surface::point::timevaluepair',
       latlon:`${KL.lat},${KL.lon}`,
       parameters:'temperature,windSpeedMS,WeatherSymbol3,precipitation1h',
-      starttime: now.toISOString(), endtime: end.toISOString(),
+      starttime: now.toISOString(),
+      endtime:   end.toISOString(),
       timestep:  '60'
     });
     const url = PROXY + encodeURIComponent(`${base}?${params.toString()}`) + '&_=' + Date.now();
@@ -481,7 +469,7 @@ async function loadFmiWeather(){
   }
 }
 
-/* ===================== VAROITUKSET (FMI CAP RSS) ===================== */
+/* =============== VAROITUKSET (FMI RSS) =============== */
 const FMI_RSS_FI = 'https://alerts.fmi.fi/cap/feed/rss_fi-FI.rss';
 function sevClassFromText(txt){
   const t=(txt||'').toLowerCase();
@@ -543,46 +531,10 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== TILANNEHUONE (24h + infotxt) ===================== */
+/* =============== TILANNEHUONE (24h + infotxt + ikonit + ohi-logiikka) =============== */
 const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
 
-function capitalFirst(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
-function sizeClass(level){
-  const l=(level||'').toLowerCase();
-  if (l.includes('suuri')) return 'sev-large';
-  if (l.includes('keskisuuri')) return 'sev-medium';
-  return 'sev-small';
-}
-/* Ikoni tehtävätyypin mukaan (sävy teeman mukainen, ei punaista) */
-function iconForTask(kind=''){
-  const t = (kind||'').toLowerCase();
-  // liikenne
-  if (t.includes('tieliikenne') || t.includes('liikenneonnettomuus') || t.includes('kolari')) return '🚗';
-  if (t.includes('tietyö') || t.includes('liikenne')) return '🚧';
-  // tulipalot
-  if (t.includes('palohälytys')) return '🚨';
-  if (t.includes('rakennuspalo') || t.includes('tulipalo')) return '🏠';
-  if (t.includes('maastopalo') || t.includes('ruohikkopalo')) return '🌲';
-  // vaaralliset aineet / öljy
-  if (t.includes('öljy') || t.includes('polttoaine')) return '🛢️';
-  if (t.includes('vaarall') || t.includes('kemika') || t.includes('kaasu')) return '☣️';
-  // vesi / vesiliikenne
-  if (t.includes('vesi') || t.includes('vesiliikenne') || t.includes('uppo')) return '🌊';
-  // pelastaminen / etsintä
-  if (t.includes('pelastus') || t.includes('henkilö') || t.includes('ihminen')) return '🛟';
-  if (t.includes('etsintä') || t.includes('kadonnut')) return '🧭';
-  // eläin
-  if (t.includes('eläin')) return '🐾';
-  // sähkö / myrsky / puu
-  if (t.includes('sähkö') || t.includes('sähkökatko')) return '⚡';
-  if (t.includes('puu') || t.includes('myrsky')) return '🌬️';
-  // retki (vain jos näkyy kuvauksissa)
-  if (t.includes('retki')) return '🟡';
-  // fallback
-  return '🛈';
-}
-
-/* Fallback-teksti */
+/* Fallback-tekstiksi */
 function cleanHtmlToText(html){
   const tmp = document.createElement('div');
   tmp.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
@@ -603,30 +555,21 @@ function parseTilanneFromText(text){
     if (lv) { level = lv[1].toLowerCase(); kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim(); }
     const [d,mo,y] = date.split('.');
     const ts = new Date(`${y}-${mo}-${d}T${time.length===5?time+':00':time}`);
-    if (!isNaN(ts.getTime())) results.push({ city, time: ts, kind, level, detail:null });
+    if (!isNaN(ts.getTime())) results.push({ city, time: ts, kind, level, detail:'' });
   }
   return results;
 }
-/* infotxt_* -lohkot mapiksi */
+
+/* infotxt_* keruu ja but_info_* avain */
 function collectInfoBlocks(doc){
   const map = new Map();
   doc.querySelectorAll('div[id^="infotxt_"]').forEach(div=>{
     const id = (div.id||'').replace('infotxt_','');
-    // siivotaan: linkit ja perään tulevat "Avaa tehtäväsivu" tms
-    const clone = div.cloneNode(true);
-    clone.querySelectorAll('a').forEach(a=>a.remove());
-    let txt = (clone.textContent||'').replace(/\s+/g,' ').trim();
-    // katkaise kaiken "Lisätty:" / "Päivitetty:" jälkeinen roska linkkeineen (jätetään itse rivit)
-    // Ensin rivitä pisteiden ja kaksoispisteiden kohdalta
-    txt = txt
-      .replace(/\. ?/g, '.\n')
-      .replace(/(Paikka:|Tarkempi paikka:|Ajankohta:|Päivitetty:)/g, '\n$1 ')
-      .split('\n').map(s=>s.trim()).filter(Boolean).join('\n');
-    map.set(id, txt);
+    const txt = (div.textContent||'').replace(/\s+\n/g,'\n').replace(/\s+/g,' ').trim();
+    if (id && txt) map.set(id, txt);
   });
   return map;
 }
-/* etsi riviltä but_info_<hash> */
 function findInfoKeyFromRow(row){
   const withClass = [row, ...row.querySelectorAll('[class]')];
   for (const el of withClass){
@@ -639,15 +582,16 @@ function findInfoKeyFromRow(row){
   if (sib && /^infotxt_/.test(sib.id||'')) return (sib.id||'').replace('infotxt_','');
   return null;
 }
-/* DOM-parsi + infotxt-yhdistys */
+
+/* DOM-parsi */
 function parseTilanneFromDom(html){
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const infoMap = collectInfoBlocks(doc);
 
   let rows = [];
-  const rowSelectors = ['.pfade','li','tr','.list-item','.news-item','.event','.content ul li','.items > *'];
-  rowSelectors.forEach(sel => rows.push(...doc.querySelectorAll(sel)));
-  rows = rows.filter(el => (el.textContent||'').trim().length > 20).slice(0, 1500);
+  const sels = ['.pfade','li','tr','.list-item','.news-item','.event','.content ul li','.items > *'];
+  sels.forEach(sel => rows.push(...doc.querySelectorAll(sel)));
+  rows = rows.filter(el => (el.textContent||'').trim().length > 20).slice(0,1500);
 
   const lineRe = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+(.+)/;
 
@@ -675,13 +619,111 @@ function parseTilanneFromDom(html){
 
     items.push({ city, time: ts, kind, level, detail });
   }
+
   if (!items.length) return parseTilanneFromText(cleanHtmlToText(html));
+
+  // dedupe
   const seen = new Set(); const uniq = [];
   for (const it of items){
     const k = `${it.city}|${it.time.toISOString()}|${(it.kind||'').toLowerCase()}`;
     if (!seen.has(k)){ seen.add(k); uniq.push(it); }
   }
   return uniq;
+}
+
+/* Lisätiedon siistintä riveiksi + leikkaus Päivitetty: jälkeen */
+function tidyDetail(raw){
+  if (!raw) return '';
+  let t = raw;
+
+  // poista "Avaa tehtäväsivu" ja muut linkkitekstit
+  t = t.replace(/Avaa\s+tehtäväsivu[\s\S]*$/i, '').trim();
+
+  // Lisää rivinvaihdot tunnetuista kentistä
+  t = t.replace(/\s*(Paikka:)\s*/i, '\n$1 ')
+       .replace(/\s*(Tarkempi\s*paikka:)\s*/i, '\n$1 ')
+       .replace(/\s*(Ajankohta:)\s*/i, '\n$1 ')
+       .replace(/\s*(Päivitetty:)\s*/i, '\n$1 ');
+
+  // Jos löytyy Päivitetty:, katkaise sitä seuraavaan rivinvaihtoon/tekstiin (jätetään Päivitetty-rivi mukaan)
+  const p = t.match(/([\s\S]*?\nPäivitetty:.*?)(?:\n|$)/i);
+  if (p) t = p[1];
+
+  // pilko riveiksi ja siisti
+  const lines = t.split('\n')
+    .map(s=>s.replace(/\s+/g,' ').trim())
+    .filter(Boolean);
+
+  return lines;
+}
+
+/* Ikoni tehtävätyypille */
+function iconForTask(kind){
+  const k = (kind||'').toLowerCase();
+
+  // liikenne
+  if (/tieliikenne|liikenneonnettom|kolari|ketjukol/.test(k)) return '🚗';
+  if (/tietyö|liikennehäiri|este tiellä|liukas|hirvi|poro|eläin tiellä/.test(k)) return '🚧';
+  if (/ajoneuvopalo|liikennevälinepalo/.test(k)) return '🚗🔥';
+
+  // palot
+  if (/palohälytys/.test(k)) return '🚨';
+  if (/rakennuspalo|asuntopalo|saneer/.test(k)) return '🏠🔥';
+  if (/maastopalo|ruohikkopalo|metsäpalo/.test(k)) return '🌲🔥';
+  if (/savuhavainto|savua/.test(k)) return '🌫️';
+
+  // vuodot / vaaralliset
+  if (/öljy|polttoaine|vuoto/.test(k)) return '🛢️';
+  if (/vaarall.*aine|kemika|kaasu/.test(k)) return '☣️';
+
+  // vesi
+  if (/vesiliiken|vene|uppo|jäätilanne/.test(k)) return '🚤';
+  if (/vesivahinko|putkirikko|tulva/.test(k)) return '💧';
+
+  // pelastus
+  if (/pelastus|henkilö.*pelastus|ihminen/.test(k)) return '🛟';
+  if (/etsintä|kadonnut/.test(k)) return '🧭';
+  if (/hissiin.*jäänyt|hissivika/.test(k)) return '🛗';
+
+  // myrsky / sähkö / puu
+  if (/myrsky|tuuli|puu.*tiellä|oksia/.test(k)) return '🌬️';
+  if (/sähkö|sähkötapaturma|sähkövika/.test(k)) return '⚡';
+
+  // eläin
+  if (/eläin/.test(k)) return '🐾';
+
+  // sortuma
+  if (/sortuma|romaht|rakennevaurio/.test(k)) return '🧱';
+
+  // muut
+  return '🛈';
+}
+
+/* Kortin kokoluokka */
+function levelToCardClass(level){
+  const l=(level||'').toLowerCase();
+  if (l.includes('suuri')) return 'sev-large';
+  if (l.includes('keskisuuri')) return 'sev-medium';
+  return ''; // pieni -> perus
+}
+function capitalFirst(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+
+/* Päättyneen tilanteen tunnistus */
+function isEnded(it){
+  const now = Date.now();
+  const ageMs = now - it.time.getTime();
+
+  // Suora vihje lisätiedoista
+  const d = (it.detail||'').toLowerCase();
+  if (/tilanne\s+ohi|tehtäv[aä]\s+ohi|ilmoitus.*päättynyt|päättynyt|poistettu/.test(d)) return true;
+
+  // Heuristiikka tasosta
+  const lvl = (it.level||'').toLowerCase();
+  const twoH = 2*60*60*1000, fourH = 4*60*60*1000, eightH = 8*60*60*1000, threeH = 3*60*60*1000;
+  if (lvl.includes('suuri'))      return ageMs > eightH;
+  if (lvl.includes('keskisuuri')) return ageMs > fourH;
+  if (lvl.includes('pieni'))      return ageMs > twoH;
+  return ageMs > threeH;
 }
 
 async function loadTilannehuone(){
@@ -696,6 +738,7 @@ async function loadTilannehuone(){
 
     let items = parseTilanneFromDom(html);
 
+    // 24h suodatus, uusin ensin, maksimissaan 20
     const now = Date.now(), dayMs = 24*60*60*1000;
     items = items
       .filter(it => (now - it.time.getTime()) <= dayMs)
@@ -708,27 +751,25 @@ async function loadTilannehuone(){
     }
 
     box.innerHTML = items.map(it=>{
-      const ended = (now - it.time.getTime()) > 2*60*60*1000; // 2h heuristiikka
-      const clsSize = sizeClass(it.level);
+      const ico = iconForTask(it.kind);
+      const clsSize = levelToCardClass(it.level);
+      const ended = isEnded(it);
       const timeText = it.time.toLocaleString('fi-FI');
       const titleTxt = capitalFirst((it.kind||'Hälytys').replace(/\s+/g,' '));
       const levelTxt = it.level ? ` <span class="th-sev">(${capitalFirst(it.level)})</span>` : '';
-      const detailHtml = it.detail
-        ? `<div class="th-desc">${it.detail.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).join('<br>')}</div>`
+
+      const detailLines = tidyDetail(it.detail||'');
+      const detailHtml = detailLines.length
+        ? `<div class="th-desc">${detailLines.map(l=>`<div>${l}</div>`).join('')}</div>`
         : '';
 
-      return `<div class="th-item ${clsSize}${ended ? ' ended':''}">
-        <div class="th-row">
-          <div class="th-icon">${iconForTask(it.kind||'')}</div>
-          <div>
-            <div class="th-top">
-              <div class="th-city">${it.city}</div>
-              <div class="th-time">${timeText}</div>
-            </div>
-            <div class="th-title">${titleTxt}${levelTxt}</div>
-            ${detailHtml}
-          </div>
+      return `<div class="th-item ${clsSize}${ended ? ' ended' : ''}">
+        <div class="th-top">
+          <div class="th-city">${it.city}</div>
+          <div class="th-time">${timeText}</div>
         </div>
+        <div class="th-title"><span class="th-ico">${ico}</span>${titleTxt}${levelTxt}</div>
+        ${detailHtml}
       </div>`;
     }).join('');
 
@@ -738,17 +779,17 @@ async function loadTilannehuone(){
   }
 }
 
-/* ===================== ASSET-DIAT (kuva/pdf/html) ===================== */
+/* =============== ASSET-DIAT (kuva/pdf/html) =============== */
 const CUSTOM_ASSETS = [
-  // Lisää/poista näitä polkuja – dioja luodaan vain olemassa olevista tiedostoista.
+  // Lisää tänne omat tiedostot (jos eivät ole olemassa, diaa ei lisätä)
   // { type: 'img',  title: 'Infokuva',  src: './info.jpg' },
-  // { type: 'pdf',  title: 'Ohje',      src: './ohje.pdf#view=FitH&toolbar=0&navpanes=0' },
-  // { type: 'page', title: 'Tiedote',   src: './tiedote.html' }
+  // { type: 'pdf',  title: 'Ohjeistus', src: './ohje.pdf#view=FitH&toolbar=0&navpanes=0' },
+  // { type: 'page', title: 'Tiedotesivu', src: './tiedote.html' }
 ];
 async function exists(url){
   try{
-    const r = await fetch(url, { method:'HEAD', cache:'no-store' });
-    if (r.ok) return true;
+    const h = await fetchWithTimeout(url, 6000, { method:'HEAD' });
+    if (h.ok) return true;
     const g = await fetchWithTimeout(url, 6000, { method:'GET' });
     return g.ok;
   }catch{ return false; }
@@ -764,8 +805,7 @@ async function filterExistingAssets(list){
 async function addAssetSlides(){
   const assets = await filterExistingAssets(CUSTOM_ASSETS);
   if (!assets.length) return;
-  const root = document.querySelector('.slides');
-  if (!root) return;
+  const root = document.querySelector('.slides'); if (!root) return;
 
   assets.forEach((asset, idx) => {
     const id = `slide-asset-${idx+1}`;
@@ -786,19 +826,29 @@ async function addAssetSlides(){
 
     const type = (asset.type || '').toLowerCase();
     if (type === 'img') {
-      const img = document.createElement('img'); img.src = asset.src; img.alt = asset.title || '';
+      const img = document.createElement('img');
+      img.src = asset.src; img.alt = asset.title || '';
       wrap.appendChild(img);
-    } else {
-      const iframe = document.createElement('iframe'); iframe.src = asset.src;
+    } else if (type === 'pdf') {
+      const iframe = document.createElement('iframe');
+      iframe.src = asset.src;
+      wrap.appendChild(iframe);
+    } else { // 'page' tai muu
+      const iframe = document.createElement('iframe');
+      iframe.src = asset.src;
       wrap.appendChild(iframe);
     }
-    body.appendChild(wrap); sec.appendChild(header); sec.appendChild(body);
+
+    body.appendChild(wrap);
+    sec.appendChild(header);
+    sec.appendChild(body);
     root.appendChild(sec);
+
     SLIDES.push(id);
   });
 }
 
-/* ===================== INIT ===================== */
+/* =============== INIT + PÄIVITYKSET =============== */
 async function init(){
   await addAssetSlides();
 
