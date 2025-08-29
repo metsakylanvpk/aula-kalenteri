@@ -128,6 +128,16 @@
   .th-sev{margin-left:6px;font-weight:900}
   .th-desc{margin-top:6px;color:#333}
   .th-ended{margin-top:6px;font-size:.95rem;color:#555}
+ /* Kortin koko skaalautuu tason mukaan */
+  .th-item.sev-medium{ font-size:1.06em; }
+  .th-item.sev-large{  font-size:1.12em; }
+
+/* Tilanne ohi -> häivytys */
+  .th-item.ended{ opacity:.55; }
+
+/* Sama maksimileveys kuin säädian ruudukolla */
+  .tilanne .slide-body{ display:flex; justify-content:center; }
+  .th-list{ width:100%; max-width:1600px; }
 
   /* ASSET-diat (jos käytössä) */
   .slide.asset .slide-header{ background: var(--accent); }
@@ -533,26 +543,20 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== TILANNEHUONE (24h + lisätiedot, DOM-pohjainen) ===================== */
+/* ===================== TILANNEHUONE (24h + lisätiedot “!” infotxt_*:stä) ===================== */
 const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
 
-/* Yleiset apurit */
-function normUrl(href){
-  if (!href) return null;
-  try{
-    if (/^https?:/i.test(href)) return href;
-    return new URL(href, 'https://www.tilannehuone.fi/').toString();
-  }catch{ return null; }
-}
 function capitalFirst(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
-function levelToClass(level){
-  const l = (level||'').toLowerCase();
+
+/* Tason muunto kortin classiksi (koko kortti skaalautuu) */
+function levelToCardClass(level){
+  const l=(level||'').toLowerCase();
   if (l.includes('suuri')) return 'sev-large';
   if (l.includes('keskisuuri')) return 'sev-medium';
-  return ''; // pieni -> perus
+  return ''; // pieni -> normaali
 }
 
-/* ❶ Fallback-tekstiparsinta (säilytetään varalta) */
+/* Fallback-teksti (jos DOM-parsi ei onnistu) */
 function cleanHtmlToText(html){
   const tmp = document.createElement('div');
   tmp.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
@@ -573,51 +577,71 @@ function parseTilanneFromText(text){
     if (lv) { level = lv[1].toLowerCase(); kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim(); }
     const [d,mo,y] = date.split('.');
     const ts = new Date(`${y}-${mo}-${d}T${time.length===5?time+':00':time}`);
-    if (!isNaN(ts.getTime())) results.push({ city, time: ts, kind, level, detailUrl:null });
+    if (!isNaN(ts.getTime())) results.push({ city, time: ts, kind, level, detail:null });
   }
   return results;
 }
 
-/* ❷ UUSI: DOM-parsija – yrittää löytää rivikontit ja niiden sisäiset linkit */
+/* Kerää sivulta piilotetut lisätiedot: div#infotxt_<hash> -> teksti */
+function collectInfoBlocks(doc){
+  const map = new Map();
+  doc.querySelectorAll('div[id^="infotxt_"]').forEach(div=>{
+    const id = (div.id||'').replace('infotxt_','');
+    const txt = (div.textContent||'').replace(/\s+/g,' ').trim();
+    if (id && txt) map.set(id, txt);
+  });
+  return map;
+}
+
+/* Etsi riviltä “!”-napin luokka: but_info_<hash> */
+function findInfoKeyFromRow(row){
+  // käy kaikki classit läpi (myös ankkureissa/spanissa)
+  const withClass = [row, ...row.querySelectorAll('[class]')];
+  for (const el of withClass){
+    for (const cls of (el.className||'').toString().split(/\s+/)){
+      const m = cls.match(/^but_info_([a-f0-9]+)/i);
+      if (m) return m[1];
+    }
+  }
+  // fallback: seuraava sisar on infotxt_*
+  let sib = row.nextElementSibling;
+  if (sib && /^infotxt_/.test(sib.id||'')) return (sib.id||'').replace('infotxt_','');
+  return null;
+}
+
+/* DOM-pohjainen rivien parsiminen + infotxt-yhdistys */
 function parseTilanneFromDom(html){
   const doc = new DOMParser().parseFromString(html, 'text/html');
+  const infoMap = collectInfoBlocks(doc);
 
-  // Etsi tehtävärivejä – kokeillaan yleisiä rakenteita:
+  // Tehtävärivien kandidaatit
+  let rows = [];
   const rowSelectors = [
-    'li',                            // listat
-    'tr',                            // taulukot
-    '.list-item, .news-item, .event',// yleiset classit
-    '.content ul li', '.container li',
-    '.items > *'
+    '.pfade',               // Tilannehuoneella usein käytössä (lyhennetty kuvaus)
+    'li', 'tr',
+    '.list-item', '.news-item', '.event',
+    '.content ul li', '.items > *'
   ];
-  // ankkurit jotka todennäköisesti vievät lisätietoihin:
-  const anchorSelector = 'a[href*="tehtav"], a[href*="tehtävä"], a[href*="tehtava"], a[href*="uutinen"], a[href*="tiedote"], a[href*="id="]';
+  rowSelectors.forEach(sel => rows.push(...doc.querySelectorAll(sel)));
 
-  // kerää kaikki kandidaattirivit
-  let candidates = [];
-  rowSelectors.forEach(sel => candidates.push(...doc.querySelectorAll(sel)));
-  // jos tuli liikaa, suodata näkyviin ja tekstiä sisältävät
-  candidates = candidates
-    .filter(el => (el.textContent||'').trim().length > 20)   // jotain sisältöä
-    .filter(el => !el.querySelector('nav, header, footer, form')) // ei navigaatioita
-    .slice(0, 1000);
+  // siivoa
+  rows = rows
+    .filter(el => (el.textContent||'').trim().length > 20)
+    .slice(0, 1500);
 
-  const items = [];
-
-  // regex riviltä kunta+pvm+klo+kuvaus
   const lineRe = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+(.+)/;
 
-  for (const row of candidates){
-    const text = row.textContent.replace(/\s+/g,' ').replace(/\u00AD/g,'').trim();
+  const items = [];
+  for (const row of rows){
+    const text = (row.textContent||'').replace(/\u00AD/g,'').replace(/\s+/g,' ').trim();
     const m = text.match(lineRe);
     if (!m) continue;
 
-    let city  = m[1].trim();
-    let date  = m[2].trim();
-    let time  = m[3].trim();
-    let tail  = m[4].trim();
+    let city = m[1].trim();
+    let date = m[2].trim();
+    let time = m[3].trim();
+    let tail = m[4].trim();
 
-    // erottele taso
     let kind = tail, level = '';
     const lv = tail.match(/:\s*(pieni|keskisuuri|suuri)\b/i);
     if (lv) { level = lv[1].toLowerCase(); kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim(); }
@@ -626,57 +650,28 @@ function parseTilanneFromDom(html){
     const ts = new Date(`${y}-${mo}-${d}T${time.length===5?time+':00':time}`);
     if (isNaN(ts.getTime())) continue;
 
-    // etsi lisätietolinkki riviltä
-    let a = row.querySelector(anchorSelector);
-    // joskus linkki on sisarsolmussa -> katso myös lähimmän containerin sisaruksia
-    if (!a){
-      const near = row.closest('div, li, tr')?.parentElement;
-      if (near) a = near.querySelector(anchorSelector);
-    }
-    const detailUrl = a ? normUrl(a.getAttribute('href')) : null;
+    const key = findInfoKeyFromRow(row);
+    const detail = key ? (infoMap.get(key) || '') : '';
 
-    items.push({ city, time: ts, kind, level, detailUrl });
+    items.push({ city, time: ts, kind, level, detail });
   }
 
-  // deduplikoi (city+time+kind)
+  // jos ei mitään, fallback tekstiin
+  if (!items.length){
+    return parseTilanneFromText(cleanHtmlToText(html));
+  }
+
+  // deduplikoi
   const seen = new Set();
-  const unique = [];
+  const uniq = [];
   for (const it of items){
-    const key = `${it.city}|${it.time.toISOString()}|${it.kind.toLowerCase()}`;
-    if (!seen.has(key)){ seen.add(key); unique.push(it); }
+    const k = `${it.city}|${it.time.toISOString()}|${(it.kind||'').toLowerCase()}`;
+    if (!seen.has(k)){ seen.add(k); uniq.push(it); }
   }
-
-  // jos DOM:sta ei tullut mitään, fallback tekstiin
-  if (!unique.length){
-    const fallback = parseTilanneFromText(cleanHtmlToText(html));
-    return fallback;
-  }
-  return unique;
+  return uniq;
 }
 
-/* ❸ Nouto lisätietosivulta: 1–2 ensimmäistä virkettä */
-async function fetchDetailSnippet(url){
-  if (!url) return '';
-  try{
-    const r = await fetchWithTimeout(PROXY + encodeURIComponent(url) + '&_=' + Date.now(), 12000);
-    if (!r.ok) throw new Error('HTTP '+r.status);
-    const html = await r.text();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    let container = doc.querySelector('article, .content, .news, main, #content') || doc.body;
-    let text = [...container.querySelectorAll('p, .lead')]
-      .map(p=>p.textContent?.trim()||'')
-      .filter(Boolean)
-      .join(' ')
-      .replace(/\s+/g,' ')
-      .trim();
-    if (!text) text = (container.textContent||'').replace(/\s+/g,' ').trim();
-    if (!text) return '';
-    const m = text.match(/^(.+?[\.\!\?])\s*(.+?[\.\!\?])?/);
-    return m ? (m[1] + (m[2] ? ' ' + m[2] : '')) : text.slice(0,240);
-  }catch{ return ''; }
-}
-
-/* ❹ Pääfunktio */
+/* Pääfunktio: haku + render */
 async function loadTilannehuone(){
   const box = document.getElementById('th-list');
   if (!box) return;
@@ -687,34 +682,30 @@ async function loadTilannehuone(){
     const html = await resp.text();
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
-    // DOM-parsinta
     let items = parseTilanneFromDom(html);
 
-    // 24h suodatus + järjestys
+    // 24h suodatus, uusin ensin
     const now = Date.now(), dayMs = 24*60*60*1000;
     items = items
       .filter(it => (now - it.time.getTime()) <= dayMs)
       .sort((a,b)=>b.time - a.time)
       .slice(0, 20);
 
-    // Nouda lisätiedot tuoreimmista, joissa on linkki
-    const targets = items.filter(it => it.detailUrl).slice(0, 10);
-    await Promise.all(targets.map(async it => { it.detail = await fetchDetailSnippet(it.detailUrl); }));
-
     if (!items.length){
       box.innerHTML = '<div class="th-item"><div class="th-title">Ei tuoreita hälytyksiä</div></div>';
       return;
     }
 
-    // Render
     box.innerHTML = items.map(it=>{
+      const ended = (now - it.time.getTime()) > 3*60*60*1000; // heuristiikka
+      const clsSize = levelToCardClass(it.level);
+      const clsEnded = ended ? ' ended' : '';
       const timeText = it.time.toLocaleString('fi-FI');
-      const clsSev = levelToClass(it.level);
-      const ended = (now - it.time.getTime()) > 3*60*60*1000; // heuristinen “Tilanne ohi”
       const titleTxt = capitalFirst((it.kind||'Hälytys').replace(/\s+/g,' '));
       const levelTxt = it.level ? ` <span class="th-sev">(${capitalFirst(it.level)})</span>` : '';
       const detailTxt = it.detail ? `<div class="th-desc">${it.detail}</div>` : '';
-      return `<div class="th-item ${clsSev}${ended?' ended':''}">
+
+      return `<div class="th-item ${clsSize}${clsEnded}">
         <div class="th-top">
           <div class="th-city">${it.city}</div>
           <div class="th-time">${timeText}</div>
@@ -724,12 +715,12 @@ async function loadTilannehuone(){
         ${ended ? `<div class="th-ended"><strong>Tilanne ohi</strong></div>` : ''}
       </div>`;
     }).join('');
+
   }catch(e){
     console.error('Tilannehuone:', e);
     box.innerHTML = '<div class="th-item"><div class="th-title">Hälytyksiä ei voitu hakea</div></div>';
   }
 }
-
 
 /* ===================== INIT + PÄIVITYKSET ===================== */
 async function init(){
@@ -751,4 +742,5 @@ init();
 </script>
 </body>
 </html>
+
 
