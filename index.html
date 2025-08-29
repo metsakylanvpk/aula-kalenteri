@@ -604,94 +604,107 @@ function isFocusPlace(name){
   return FOCUS_PLACES.some(p => n === p.toLowerCase());
 }
 
+/* ===================== TILANNEHUONE (tilannehuone.fi) – viimeiset 20 + "Tilanne ohi" ===================== */
 async function loadTilannehuone(){
   const box = document.getElementById('th-list');
   box.innerHTML = '<div class="th-card"><div class="th-title">Ladataan hälytyksiä…</div></div>';
+
+  // Apurit (lokaalit, etteivät sotke muun koodin muuttujia)
+  const INACTIVE_AFTER_HOURS = 4;
+  const LIMIT = 20;
+
+  const norm = s => (s||'')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\u00A0/g,' ')
+    .replace(/\u00AD/g,'')
+    .replace(/[ ]{2,}/g,' ')
+    .trim();
+
+  const toSentenceCase = s => s ? s.trim().replace(/^./, c => c.toUpperCase()) : '';
+
+  const cleanupTaskText = s => (s||'')
+    .replace(/Avaa tehtäväsivu.+$/i,'')
+    .replace(/Lisätty:.+$/i,'')
+    .replace(/Silminnäkijähavainto:.+$/i,'')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  const severityFromText = txt => {
+    const t = norm(txt);
+    if (/\bsuuri\b/.test(t)) return 'large';
+    if (/\bkeskisuuri\b/.test(t)) return 'medium';
+    return 'small';
+  };
+  const sevClass = sev => sev==='large' ? 'sev-large' : (sev==='medium' ? 'sev-medium' : 'sev-small');
+
   try{
     const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/lista.php?list=disorder') + '&_=' + Date.now();
-    let html = await fetchWithTimeout(url, 15000).then(r=>r.text());
-
+    const html = await fetchWithTimeout(url, 15000).then(r=>r.text());
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    let text = (doc.body?.innerText || '').toString();
+    let text = (doc.body?.innerText || '')
+      .replace(/\r/g,'').replace(/\t/g,' ')
+      .replace(/\u00A0/g,' ').replace(/\u00AD/g,'')
+      .replace(/[ ]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim();
 
-    // Normalisoinnit: poista rivinvaihtojen häiriöt, kovavälit ja pehmeät tavuviivat
-    text = text
-      .replace(/\r/g,'')
-      .replace(/\t/g,' ')
-      .replace(/\u00A0/g,' ')  // NBSP
-      .replace(/\u00AD/g,'')   // soft hyphen
-      .replace(/[ ]{2,}/g,' ')
-      .trim();
-
-    // Pää-regex: "Kaupunki  dd.mm.yyyy hh:mm(:ss)  tehtävä… (seuraavaan kaupunkiin asti)"
-    const reMain = /([A-ZÅÄÖa-zåäö\-\. ]{2,30})\s+(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?)\s+([^|]+?)(?=(?:\s+[A-ZÅÄÖa-zåäö\-\. ]{2,30}\s+\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})|$)/g;
-
-    function cleanupTaskText(s){
-      if(!s) return '';
-      return s
-        .replace(/Avaa tehtäväsivu.+$/i,'')
-        .replace(/Lisätty:.+$/i,'')
-        .replace(/Silminnäkijähavainto:.+$/i,'')
-        .replace(/\s+/g,' ')
-        .trim();
-    }
-    function toSentenceCase(s){
-      if(!s) return '';
-      s = s.trim();
-      return s.charAt(0).toUpperCase() + s.slice(1);
-    }
-    function severityFromText(txt){
-      const t=(txt||'').toLowerCase();
-      if (t.includes('suuri')) return 'large';
-      if (t.includes('keskisuuri')) return 'medium';
-      return 'small';
-    }
-    function sevClass(sev){ return sev==='large'?'sev-large':(sev==='medium'?'sev-medium':'sev-small'); }
-    function isFocusPlace(name){
-      if(!name) return false;
-      const n = name.trim().toLowerCase();
-      return FOCUS_PLACES.some(p => n === p.toLowerCase());
-    }
-
-    // 1) Ensisijainen nosto
     const rows = [];
+    // Sietää “Kaupunki, Alue  31.12.2025 12:34(:ss)  tehtävä…” -muodon.
+    const reMain = /([A-ZÅÄÖa-zåäö][A-ZÅÄÖa-zåäö\-\.\s,()]{1,60})\s+(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?)\s+([^|]+?)(?=(?:\s+[A-ZÅÄÖa-zåäö][A-ZÅÄÖa-zåäö\-\.\s,()]{1,60}\s+\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})|$)/g;
     let m;
     while ((m = reMain.exec(text)) !== null) {
-      let city = (m[1]||'').trim();
-      let time = (m[2]||'').trim();
+      const city = (m[1]||'').trim().replace(/\s+/g,' ');
+      const timeStr = (m[2]||'').trim();
       let task = cleanupTaskText((m[3]||'').trim());
 
-      // Erota kokoluokka loppuun
-      const sizeMatch = task.match(/(?:[:,]\s*|\s)\b(pieni|keskisuuri|suuri)\b/i);
+      // Nosta koko ja poista se itse tekstistä
+      const sizeMatch = task.match(/\b(pieni|keskisuuri|suuri)\b/i);
       const sizeTxt = sizeMatch ? sizeMatch[1].toLowerCase() : 'pieni';
-      task = task.replace(/(?:[:,]\s*|\s)\b(pieni|keskisuuri|suuri)\b/i,'').trim();
+      task = task.replace(/\b(pieni|keskisuuri|suuri)\b/i,'').replace(/[,:]\s*$/,'').trim();
 
-      rows.push({city, time, task, size:sizeTxt});
+      // Aika -> Date
+      const [d, t] = timeStr.split(/\s+/);
+      const [dd, mm, yyyy] = d.split('.').map(Number);
+      const [HH, MM, SS] = (t||'').split(':').map(Number);
+      const dt = new Date(yyyy, (mm||1)-1, dd||1, HH||0, MM||0, SS||0||0);
+
+      // Inaktiivisuus: “tilanne ohi” tekstissä TAI yli 4 h vanha
+      const inactive = /tilanne\s*ohi/i.test(task) || ((Date.now() - dt.getTime()) > INACTIVE_AFTER_HOURS*60*60*1000);
+
+      rows.push({ city, timeStr, dt, task, size:sizeTxt, inactive });
     }
 
-    // 2) Varapolku: jos regex ei löytänyt mitään, yritä “taulukko”-tyyliin (City \n datetime \n task)
-    let parsed = rows;
-    if (!parsed.length){
+    // Varapolku jos pääregex ei löytänyt mitään: rivi-rakenne (City \n datetime \n task)
+    if (!rows.length){
       const lines = text.split('\n').map(s=>s.trim()).filter(Boolean);
-      const alt = [];
-      for (let i=0; i<lines.length-2; i++){
-        const lineCity = lines[i];
-        const lineDT   = lines[i+1];
-        const lineTask = lines[i+2];
-        if (/^\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?$/.test(lineDT) && /[a-zåäö]/i.test(lineTask)) {
-          let task = cleanupTaskText(lineTask);
-          const sizeMatch = task.match(/\b(pieni|keskisuuri|suuri)\b/i);
-          const sizeTxt = sizeMatch ? sizeMatch[1].toLowerCase() : 'pieni';
-          task = task.replace(/\b(pieni|keskisuuri|suuri)\b/i,'').trim();
-          alt.push({ city: lineCity, time: lineDT, task, size:sizeTxt });
-        }
+      for (let i=0;i<lines.length-2;i++){
+        const C = lines[i], D = lines[i+1], T = lines[i+2];
+        if (!/^\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?$/.test(D)) continue;
+        let task = cleanupTaskText(T);
+        const sizeMatch = task.match(/\b(pieni|keskisuuri|suuri)\b/i);
+        const sizeTxt = sizeMatch ? sizeMatch[1].toLowerCase() : 'pieni';
+        task = task.replace(/\b(pieni|keskisuuri|suuri)\b/i,'').replace(/[,:]\s*$/,'').trim();
+
+        const [d, t] = D.split(/\s+/);
+        const [dd, mm, yyyy] = d.split('.').map(Number);
+        const [HH, MM, SS] = (t||'').split(':').map(Number);
+        const dt = new Date(yyyy, (mm||1)-1, dd||1, HH||0, MM||0, SS||0||0);
+
+        const inactive = /tilanne\s*ohi/i.test(task) || ((Date.now() - dt.getTime()) > INACTIVE_AFTER_HOURS*60*60*1000);
+
+        rows.push({ city:C, timeStr:D, dt, task, size:sizeTxt, inactive });
       }
-      parsed = alt;
     }
 
-    // Näytä ensisijaisesti kohdealue, muuten koko maan uusimmat
-    const focus = parsed.filter(r => isFocusPlace(r.city));
-    const list = (focus.length ? focus : parsed).slice(0, IS_MOBILE ? 20 : 12);
+    // Rajaus 24h sisään, mutta jos tyhjä → käytä silti uusimmat
+    const now = Date.now();
+    let list = rows
+      .filter(r => (now - r.dt.getTime()) <= 24*60*60*1000)
+      .sort((a,b)=>b.dt - a.dt);
+
+    if (!list.length) {
+      list = rows.sort((a,b)=>b.dt - a.dt);
+    }
+    list = list.slice(0, LIMIT);
 
     if (!list.length){
       box.innerHTML = '<div class="th-card"><div class="th-title">Ei tuoreita hälytyksiä</div></div>';
@@ -700,11 +713,11 @@ async function loadTilannehuone(){
 
     box.innerHTML = list.map(r=>{
       const sev = severityFromText(r.size);
-      const title = `${toSentenceCase(r.task)} (${r.size})`;
+      const title = `${toSentenceCase(r.task)} (${r.size})` + (r.inactive ? ' <span class="muted">— Tilanne ohi</span>' : '');
       return `<div class="th-card ${sevClass(sev)}">
         <div class="th-top">
           <div class="th-city">${r.city}</div>
-          <div class="th-time">${r.time}</div>
+          <div class="th-time">${r.timeStr}</div>
         </div>
         <div class="th-title">${title}</div>
       </div>`;
@@ -712,8 +725,7 @@ async function loadTilannehuone(){
 
   }catch(e){
     console.error('Tilannehuone:', e);
-    document.getElementById('th-list').innerHTML =
-      '<div class="th-card"><div class="th-title">Tilannehuoneen tietoja ei voitu hakea</div></div>';
+    box.innerHTML = '<div class="th-card"><div class="th-title">Tilannehuoneen tietoja ei voitu hakea</div></div>';
   }
 }
 
@@ -816,4 +828,5 @@ init();
 </script>
 </body>
 </html>
+
 
