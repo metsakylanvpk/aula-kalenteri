@@ -55,7 +55,6 @@
   .event-title{font-weight:800;font-size:1.18rem;word-break:break-word}
   .event-description{margin-top:6px;color:#333;font-size:1.02rem}
 
-  /* 1920×1080: ~5 korttia ilman scrollia (desktop) */
   @media (min-width: 1025px){
     .events-list{grid-auto-rows:minmax(0,1fr)}
     .event-card{padding:14px 16px}
@@ -68,7 +67,7 @@
     height:100%;
     max-width:1600px; margin:0 auto;
     display:grid; gap:16px;
-    grid-template-rows:auto auto 1fr; /* sää, ennuste, varoitukset täyttää lopun */
+    grid-template-rows:auto auto 1fr;
     grid-template-columns:1fr;
     grid-template-areas:
       "wx"
@@ -83,7 +82,6 @@
   .p-fc   {grid-area: fc}
   .p-warn {grid-area: warn}
 
-  /* Sääkortti */
   .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:10px}
   .w-city{font-size:1.2rem;font-weight:900}
   .w-temp{font-size:2.2rem;font-weight:900}
@@ -92,14 +90,12 @@
   .w-icon{font-size:1.6rem;margin-left:6px}
   .muted{opacity:.7}
 
-  /* Ennuste (kompakti) */
   .forecast{display:grid;gap:10px;grid-template-columns:repeat(6,1fr)}
   .fc-item{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 6px rgba(0,0,0,.12);text-align:center}
   .fc-time{font-weight:800;margin-bottom:4px}
   .fc-temp{font-size:1.05rem;font-weight:900}
   .fc-sub{font-size:.92rem;color:#333;margin-top:2px}
 
-  /* Varoitukset – määrä rajataan JS:ssä */
   .warn-list{display:grid;gap:10px}
   .warn-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;grid-template-columns:28px 1fr;gap:10px}
   .warn-icon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900}
@@ -113,19 +109,17 @@
 
   /* ======= TILANNEHUONE ======= */
   .tilanne .slide-header{background:var(--accent)}
-  /* Kavennus kuten säädissa */
   .th-wrap{max-width:1600px;margin:0 auto}
   .th-list{display:grid;gap:10px}
   .th-item{
     background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12);
     transition: opacity .2s ease;
-    font-size:1rem; /* perus */
+    font-size:1rem; /* perus (pieni) */
   }
-  /* koko kortin skaalautuminen tason mukaan */
   .th-item.sev-medium{font-size:1.08rem}
   .th-item.sev-large {font-size:1.16rem}
+  .th-item.faded{opacity:.55}           /* > 2 h vanhat */
 
-  .th-item.faded{opacity:.55} /* > 2 h vanhat */
   .th-top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
   .th-city{font-weight:900}
   .th-time{font-size:.95rem;opacity:.8}
@@ -133,13 +127,13 @@
   .th-sev{margin-left:6px;font-weight:900}
   .th-desc{margin-top:6px;color:#333}
 
-  /* ======= ASSET DIAT (kuva/pdf/html) — valmius */
+  /* ======= ASSET-DIAT (kuva/pdf/html) ======= */
   .slide.asset .slide-header{ background: var(--accent); }
   .slide.asset .slide-body{
     display: grid;
     place-items: center;
-    overflow: hidden;             /* desktop: ei scrollia */
-    background: #000;             /* parempi tausta kuville/pdf:lle */
+    overflow: hidden;
+    background: #000;
   }
   .asset-wrap{
     width: 100%;
@@ -221,7 +215,7 @@
             </div>
           </div>
         </div>
-      </div> <!-- .wx-grid -->
+      </div>
     </div>
   </section>
 
@@ -236,8 +230,6 @@
       </div>
     </div>
   </section>
-
-  <!-- (valinnainen) ASSET-DIAT lisätään JS:llä jos tiedostoja löytyy -->
 </div>
 
 <!-- ical.js tapahtumille -->
@@ -245,7 +237,7 @@
 <script>
 /* ===================== YLEISET ===================== */
 const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // teidän Worker
-const SLIDES = ['slide-events','slide-wx','slide-tilanne'];
+const SLIDES = ['slide-events','slide-wx','slide-tilanne'];  // assetit lisätään perään
 let   slideIndex = 0;
 const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
 
@@ -302,7 +294,7 @@ let autoTimer = setInterval(()=>{
   },{passive:true});
 })();
 
-/* Helpers */
+/* ===================== APURIT ===================== */
 async function fetchWithTimeout(url, ms=12000, opts={}){
   const ctrl = new AbortController(); const id = setTimeout(()=>ctrl.abort(), ms);
   try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store', ...opts}); clearTimeout(id); return r; }
@@ -684,8 +676,8 @@ async function loadTilannehuone(){
     const in24h = items.filter(it => (now - it.time.getTime()) <= dayMs)
                        .sort((a,b)=>b.time - a.time);
 
-    // jos 24h sisällä ei ole, näytä silti viimeiset 10 kaiken kaikkiaan
-    const list = (in24h.length ? in24h : items.sort((a,b)=>b.time - a.time)).slice(0, 20);
+    // jos 24h sisällä ei ole, näytä silti viimeiset 10; muuten max 20
+    const list = (in24h.length ? in24h : items.sort((a,b)=>b.time - a.time)).slice(0, in24h.length ? 20 : 10);
 
     if (!list.length){
       box.innerHTML = '<div class="th-item"><div class="th-title">Ei tuoreita hälytyksiä</div></div>';
@@ -716,8 +708,76 @@ async function loadTilannehuone(){
   }
 }
 
+/* ===================== ASSET-DIAT (kuva/pdf/html) ===================== */
+const CUSTOM_ASSETS = [
+  // Muokkaa/poista näitä rivejä oman tarpeen mukaan:
+  // { type: 'img',  title: 'Infokuva',    src: './info.jpg' },
+  // { type: 'pdf',  title: 'Ohjeistus',   src: './ohje.pdf#view=FitH&toolbar=0&navpanes=0' },
+  // { type: 'page', title: 'Tiedotesivu', src: './tiedote.html' }
+];
+
+async function exists(url){
+  try{
+    const h = await fetchWithTimeout(url, 6000, { method:'HEAD' });
+    if (h.ok) return true;
+    const g = await fetchWithTimeout(url, 6000, { method:'GET' });
+    return g.ok;
+  }catch{ return false; }
+}
+async function filterExistingAssets(list){
+  const out = [];
+  for (const a of list){
+    if (!a || !a.src) continue;
+    try{ if (await exists(a.src)) out.push(a); }catch(_){}
+  }
+  return out;
+}
+async function addAssetSlides(){
+  const assets = await filterExistingAssets(CUSTOM_ASSETS);
+  if (!assets.length) return;
+  const root = document.querySelector('.slides');
+  if (!root) return;
+
+  assets.forEach((asset, idx) => {
+    const id = `slide-asset-${idx+1}`;
+    const sec = document.createElement('section');
+    sec.className = 'slide asset';
+    sec.id = id;
+    sec.setAttribute('aria-label', asset.title || 'Dia');
+
+    const header = document.createElement('div');
+    header.className = 'slide-header';
+    header.textContent = asset.title || 'Dia';
+
+    const body = document.createElement('div');
+    body.className = 'slide-body';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'asset-wrap';
+
+    const type = (asset.type || '').toLowerCase();
+    if (type === 'img') {
+      const img = document.createElement('img');
+      img.src = asset.src; img.alt = asset.title || '';
+      wrap.appendChild(img);
+    } else {
+      const iframe = document.createElement('iframe');
+      iframe.src = asset.src;
+      wrap.appendChild(iframe);
+    }
+
+    body.appendChild(wrap);
+    sec.appendChild(header);
+    sec.appendChild(body);
+    root.appendChild(sec);
+    SLIDES.push(id);
+  });
+}
+
 /* ===================== INIT + PÄIVITYKSET ===================== */
 async function init(){
+  await addAssetSlides();
+
   // Tapahtumat
   const ev = await loadICS(ICS_URL());   renderEvents('miehisto-events', ev);
   // Sää + varoitukset
