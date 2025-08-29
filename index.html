@@ -703,7 +703,33 @@ async function loadTilannehuone(){
       const timeText = it.time.toLocaleString('fi-FI');
       const titleTxt = capitalFirst((it.kind||'Hälytys').replace(/\s+/g,' '));
       const levelTxt = it.level ? ` <span class="th-sev">(${capitalFirst(it.level)})</span>` : '';
-      const detailTxt = it.detail ? `<div class="th-desc">${it.detail}</div>` : '';
+      
+      function formatDetail(detailRaw){
+  if (!detailRaw) return '';
+  let lines = detailRaw.split(/\s*\n\s*|\.\s+/).map(l=>l.trim()).filter(l=>l);
+
+  // Poistetaan turhat rivit/linkit
+  lines = lines.filter(l=>
+    !/fintraffic/i.test(l) &&
+    !/ava[au] tehtäväsivu/i.test(l) &&
+    !/lisätty:/i.test(l) &&
+    !/päivitetty:/i.test(l)
+  );
+
+  // Erotellaan Ajankohta ja Päivitetty omille riveille
+  let ajankohta = lines.find(l => /^Ajankohta:/i.test(l));
+  let paivitetty = lines.find(l => /^Päivitetty:/i.test(l));
+
+  lines = lines.filter(l => !/^Ajankohta:/i.test(l) && !/^Päivitetty:/i.test(l));
+
+  let html = '';
+  if (ajankohta) html += `<div><strong>${ajankohta}</strong></div>`;
+  if (paivitetty) html += `<div><strong>${paivitetty}</strong></div>`;
+  if (lines.length) html += `<div>${lines.join('. ')}</div>`;
+
+  return `<div class="th-desc">${html}</div>`;
+}
+const detailTxt = it.detail ? formatDetail(it.detail) : '';
 
       return `<div class="th-item ${clsSize}${clsEnded}">
         <div class="th-top">
