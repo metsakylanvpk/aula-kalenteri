@@ -2,7 +2,7 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8" />
-<title>Aulan näyttö – Tapahtumat • Sää • Tilannehuone</title>
+<title>Aulan näyttö – Tapahtumat • Sää • Liikenne • Tilannehuone</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
   :root{
@@ -83,7 +83,6 @@
   .p-fc   {grid-area: fc}
   .p-warn {grid-area: warn}
 
-  /* Sääkortti */
   .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:10px}
   .w-city{font-size:1.2rem;font-weight:900}
   .w-temp{font-size:2.2rem;font-weight:900}
@@ -92,14 +91,12 @@
   .w-icon{font-size:1.6rem;margin-left:6px}
   .muted{opacity:.7}
 
-  /* Ennuste (kompakti) */
   .forecast{display:grid;gap:10px;grid-template-columns:repeat(6,1fr)}
   .fc-item{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 6px rgba(0,0,0,.12);text-align:center}
   .fc-time{font-weight:800;margin-bottom:4px}
   .fc-temp{font-size:1.05rem;font-weight:900}
   .fc-sub{font-size:.92rem;color:#333;margin-top:2px}
 
-  /* Varoitukset – määrä rajataan JS:ssä */
   .warn-list{display:grid;gap:10px}
   .warn-item{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;grid-template-columns:28px 1fr;gap:10px}
   .warn-icon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900}
@@ -111,22 +108,22 @@
   .lvl-orange .warn-icon{background:#ff9800}
   .lvl-red    .warn-icon{background:#e53935}
 
-  /* ======= TILANNEHUONE ======= */
+  /* ======= LIIKENNE & TILANNEHUONE ======= */
+  .traffic-only .slide-header,
   .tilanne .slide-header{background:var(--accent)}
-  .th-list{display:grid;gap:10px}
-  .th-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
-  .th-top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
-  .th-city{font-weight:900}
-  .th-time{font-size:.95rem;opacity:.8}
-  .th-title{font-weight:800;margin-top:4px}
-  .th-sev{margin-left:6px;font-weight:900}
-  .sev-small{font-size:1.05rem}
-  .sev-medium{font-size:1.12rem}
-  .sev-large{font-size:1.18rem}
-  .th-desc{margin-top:6px;color:#333}
-  .th-ended{margin-top:6px;font-size:.95rem;color:#555}
+  .traffic-list,.tilanne-list{display:grid;gap:10px}
+  .traffic-item,.tilanne-item{
+    background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)
+  }
+  .t-title,.th-title{font-weight:800;margin-bottom:4px}
+  .t-meta,.th-meta{font-size:.95rem;color:#444}
+  .t-desc,.th-desc{margin-top:6px;color:#333}
+  .traffic-item.accident .t-title{color:#c62828}
+  .traffic-item.accident .t-meta{color:#b71c1c}
+  .traffic-item.inactive{background:#eee;color:#555}
+  .tilanne-item.inactive{background:#eee;color:#555}
 
-  /* ======= ASSET DIAT (kuva/pdf/html) — jos käytätte näitä, jätä tyhjäksi tai poista jos ette */
+  /* ======= ASSET DIAT (kuva/pdf/html) ======= */
   .slide.asset .slide-header{ background: var(--accent); }
   .slide.asset .slide-body{
     display: grid;
@@ -218,12 +215,22 @@
     </div>
   </section>
 
-  <!-- 3) TILANNEHUONE -->
+  <!-- 3) LIIKENNE -->
+  <section class="slide traffic-only" id="slide-traffic" aria-label="Liikennetiedotteet">
+    <div class="slide-header">Liikennetiedotteet (Keski-Uusimaa + Vantaa)</div>
+    <div class="slide-body">
+      <div id="traffic-list" class="traffic-list">
+        <div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4) TILANNEHUONE -->
   <section class="slide tilanne" id="slide-tilanne" aria-label="Tilannehuone">
     <div class="slide-header">Tilannehuone</div>
     <div class="slide-body">
-      <div id="th-list" class="th-list">
-        <div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div>
+      <div id="tilanne-list" class="tilanne-list">
+        <div class="tilanne-item"><div class="th-title">Ladataan Tilannehuoneen hälytyksiä…</div></div>
       </div>
     </div>
   </section>
@@ -233,8 +240,8 @@
 <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
 /* ===================== YLEISET ===================== */
-const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← pidä teidän Worker
-const SLIDES = ['slide-events','slide-wx','slide-tilanne'];  // 3 diaa
+const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← VAIHDA omaan Worker-osoitteeseesi
+const SLIDES = ['slide-events','slide-wx','slide-traffic','slide-tilanne'];  // 4 diaa (asset-diat lisätään perään)
 let   slideIndex = 0;
 const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
 
@@ -262,36 +269,46 @@ let autoTimer = setInterval(()=>{
   showSlide(slideIndex);
 }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
 
-/* Swipe */
+/* Swipe diojen vaihtoon (mobiili) */
 (function enableSwipe(){
   const container = document.getElementById('slides');
   if (!container) return;
-  let sx=0, sy=0, moved=false, scrolling=false;
-  const H=50, V=30;
-  container.addEventListener('touchstart',e=>{
-    if(e.touches?.length!==1) return;
-    sx=e.touches[0].clientX; sy=e.touches[0].clientY; moved=false; scrolling=false;
-  },{passive:true});
-  container.addEventListener('touchmove',e=>{
-    if(e.touches?.length!==1) return;
-    const dx=e.touches[0].clientX-sx, dy=e.touches[0].clientY-sy;
-    if(Math.abs(dy)>V){ scrolling=true; return; }
-    if(Math.abs(dx)>5) moved=true;
-  },{passive:true});
-  container.addEventListener('touchend',e=>{
-    if(scrolling||!moved) return;
-    const dx=(e.changedTouches?.[0]?.clientX||sx)-sx;
-    if(Math.abs(dx)>H){
+  let touchStartX = 0, touchStartY = 0, touchMoved = false, scrolling = false;
+  const H_THRESHOLD = 50, V_TOLERANCE = 30;
+
+  container.addEventListener('touchstart', (e)=>{
+    if (!e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touchStartX = t.clientX; touchStartY = t.clientY;
+    touchMoved=false; scrolling=false;
+  }, {passive:true});
+
+  container.addEventListener('touchmove', (e)=>{
+    if (!e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    if (Math.abs(dy) > V_TOLERANCE){ scrolling=true; return; }
+    if (Math.abs(dx) > 5) touchMoved = true;
+  }, {passive:true});
+
+  container.addEventListener('touchend', (e)=>{
+    if (scrolling || !touchMoved) return;
+    const t = e.changedTouches && e.changedTouches[0]; if (!t) return;
+    const dx = t.clientX - touchStartX;
+    if (Math.abs(dx) > H_THRESHOLD){
       clearInterval(autoTimer);
-      slideIndex = dx<0 ? (slideIndex+1)%SLIDES.length : (slideIndex-1+SLIDES.length)%SLIDES.length;
+      slideIndex = dx < 0 ? (slideIndex+1)%SLIDES.length : (slideIndex-1+SLIDES.length)%SLIDES.length;
       showSlide(slideIndex);
-      autoTimer = setInterval(()=>{ slideIndex=(slideIndex+1)%SLIDES.length; showSlide(slideIndex); },
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
+      autoTimer = setInterval(()=>{
+        slideIndex = (slideIndex + 1) % SLIDES.length;
+        showSlide(slideIndex);
+      }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
     }
-  },{passive:true});
+  }, {passive:true});
 })();
 
-/* Helpers */
+/* Pienet apurit */
 async function fetchWithTimeout(url, ms=12000, opts={}){
   const ctrl = new AbortController(); const id = setTimeout(()=>ctrl.abort(), ms);
   try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store', ...opts}); clearTimeout(id); return r; }
@@ -302,6 +319,73 @@ function stripLinks(html) {
   const div = document.createElement('div'); div.innerHTML = html;
   div.querySelectorAll('a').forEach(a => a.remove());
   return (div.textContent || div.innerText || '').replace(/https?:\/\/\S+/g, '').trim();
+}
+
+/* ===================== ASSET-DIAT (kuva/pdf/html) ===================== */
+const CUSTOM_ASSETS = [
+  { type: 'img',  title: 'Infokuva',    src: './info.jpg' },
+  { type: 'pdf',  title: 'Ohjeistus',   src: './ohje.pdf#view=FitH&toolbar=0&navpanes=0' },
+  { type: 'page', title: 'Tiedotesivu', src: './tiedote.html' }
+];
+async function exists(url){
+  try{
+    const r = await fetch(url, { method:'HEAD', cache:'no-store' });
+    if (r.ok) return true;
+    const g = await fetchWithTimeout(url, 6000, { method:'GET' });
+    return g.ok;
+  }catch{ return false; }
+}
+async function filterExistingAssets(list){
+  const out = [];
+  for (const a of list){
+    if (!a || !a.src) continue;
+    try{ if (await exists(a.src)) out.push(a); }catch(_){}
+  }
+  return out;
+}
+async function addAssetSlides(){
+  const assets = await filterExistingAssets(CUSTOM_ASSETS);
+  if (!assets.length) return;
+  const root = document.querySelector('.slides');
+  if (!root) return;
+  assets.forEach((asset, idx) => {
+    const id = `slide-asset-${idx+1}`;
+    const sec = document.createElement('section');
+    sec.className = 'slide asset';
+    sec.id = id;
+    sec.setAttribute('aria-label', asset.title || 'Dia');
+
+    const header = document.createElement('div');
+    header.className = 'slide-header';
+    header.textContent = asset.title || 'Dia';
+
+    const body = document.createElement('div');
+    body.className = 'slide-body';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'asset-wrap';
+
+    const type = (asset.type || '').toLowerCase();
+    if (type === 'img') {
+      const img = document.createElement('img');
+      img.src = asset.src; img.alt = asset.title || '';
+      wrap.appendChild(img);
+    } else if (type === 'pdf') {
+      const iframe = document.createElement('iframe');
+      iframe.src = asset.src;
+      wrap.appendChild(iframe);
+    } else {
+      const iframe = document.createElement('iframe');
+      iframe.src = asset.src;
+      wrap.appendChild(iframe);
+    }
+
+    body.appendChild(wrap);
+    sec.appendChild(header);
+    sec.appendChild(body);
+    root.appendChild(sec);
+    SLIDES.push(id);
+  });
 }
 
 /* ===================== TAPAHTUMAT (Nimenhuuto ICS) ===================== */
@@ -548,49 +632,130 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== TILANNEHUONE – “viimeiset 24h” ===================== */
-/* Haetaan pääsivun listaus ja parsitaan tekstit ulos. Näytetään max 20 kpl. */
-const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
+/* ===================== DIGITRAFFIC – Liikennetiedotteet ===================== */
+const REGION_NAMES = [
+  'Nurmijärvi','Järvenpää','Kerava','Tuusula','Hyvinkää','Mäntsälä','Sipoo','Pornainen',
+  'Vantaa','Klaukkala','Keski-Uusimaa','Pääkaupunkiseutu'
+];
+function extractAreaStrings(feature){
+  const out = [];
+  const anns = feature?.properties?.announcements || [];
+  for (const a of anns){
+    const areaArr = a?.locationDetails?.areaLocation?.areas || [];
+    areaArr.forEach(ar => { if (ar?.name) out.push(ar.name); });
+    const muni = a?.locationDetails?.roadAddressLocation?.roadAddress?.municipality;
+    if (muni) out.push(muni);
+    const road = a?.locationDetails?.roadAddressLocation?.roadAddress?.roadNumber;
+    if (road) out.push(`VT ${road}`);
+  }
+  return out.map(s => (s||'').toString().toLowerCase());
+}
+function isInTargetArea(feature){
+  const hay = extractAreaStrings(feature).join(' ');
+  return REGION_NAMES.some(n => hay.includes(n.toLowerCase()));
+}
+function isAccidentFeature(feature){
+  const txt = JSON.stringify(feature?.properties || {}).toLowerCase();
+  return txt.includes('onnettomu') || txt.includes('kolari') || txt.includes('liikenneonnettomuus');
+}
+function extractTimes(feature){
+  const p = feature?.properties || {};
+  const anns = p.announcements || [];
+  const a0 = anns[0] || {};
+  const tsStart = a0.releaseTime || a0.publicationTime || p.publicationTime || p.releaseTime;
+  const tsEnd   = p.situationEnded || a0.situationEnded || null;
+  return {
+    startISO: tsStart || null,
+    endISO: tsEnd || null,
+    startText: tsStart ? new Date(tsStart).toLocaleString('fi-FI') : '',
+    endText: tsEnd   ? new Date(tsEnd).toLocaleString('fi-FI')   : ''
+  };
+}
+function isFresh(feature){
+  const { startISO, endISO } = extractTimes(feature);
+  const now = Date.now();
+  const startOk = startISO ? (now - new Date(startISO).getTime()) <= 36*60*60*1000 : true;
+  const endedRecently = endISO ? (now - new Date(endISO).getTime()) <= 18*60*60*1000 : false;
+  const active = ((feature?.properties?.status)||'').toUpperCase() === 'ACTIVE';
+  return active || endedRecently || startOk;
+}
+function toTrafficItem(feature){
+  const p = feature?.properties || {};
+  const anns = p.announcements || [];
+  const a0 = anns[0] || {};
+  const { startText, endText } = extractTimes(feature);
+  const title = a0.title || p.title || 'Liikennetiedote';
+  const desc  = a0.comment || a0.description || p.description || '';
+  const muni = a0?.locationDetails?.roadAddressLocation?.roadAddress?.municipality
+            || a0?.locationDetails?.areaLocation?.areas?.[0]?.name || '';
+  const roadNo = a0?.locationDetails?.roadAddressLocation?.roadAddress?.roadNumber;
+  const where = [muni, roadNo ? `VT ${roadNo}` : ''].filter(Boolean).join(' • ');
+  const status = (p.status || '').toUpperCase();
+  const accident = isAccidentFeature(feature);
+  const sortTs = (a0.releaseTime || a0.publicationTime || p.publicationTime || p.releaseTime) || null;
+  const sortVal = sortTs ? new Date(sortTs).getTime() : 0;
+  return { title, desc, where, status, startText, endText, accident, sortVal };
+}
+async function loadTraffic(){
+  const box = document.getElementById('traffic-list');
+  if (!box) return;
+  box.innerHTML = '<div class="traffic-item"><div class="t-title">Ladataan liikennetietoja…</div></div>';
+  try{
+    const api = 'https://tie.digitraffic.fi/api/traffic-message/v1/messages?includeAreaGeometry=true';
+    const url = PROXY + encodeURIComponent(api) + '&_=' + Date.now();
+    const r = await fetchWithTimeout(url, 15000);
+    const text = await r.text();
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (text.trim().startsWith('<')) throw new Error('Proxy/HTML-virhe');
+    const data = JSON.parse(text);
+    const features = Array.isArray(data?.features) ? data.features : [];
+    let list = features.filter(isInTargetArea).filter(isFresh);
+    list.sort((a,b)=> toTrafficItem(b).sortVal - toTrafficItem(a).sortVal );
+    const html = list.slice(0, IS_MOBILE ? 40 : 30).map(f=>{
+      const it = toTrafficItem(f);
+      const inactive = it.status !== 'ACTIVE';
+      return `<div class="traffic-item card${inactive ? ' inactive' : ''}${it.accident ? ' accident' : ''}">
+        <div class="t-title">${it.title}</div>
+        <div class="t-meta">${[it.where, it.startText].filter(Boolean).join(' • ')}</div>
+        ${it.desc ? `<div class="t-desc">${it.desc}</div>` : ''}
+        ${inactive ? `<div class="t-meta"><strong>Tilanne ohi</strong>${it.endText ? ` • ${it.endText}`:''}</div>` : ''}
+      </div>`;
+    }).join('');
+    box.innerHTML = html || '<div class="traffic-item"><div class="t-title">Ei ajankohtaisia tiedotteita alueella</div></div>';
+  }catch(e){
+    console.error('Digitraffic:', e);
+    box.innerHTML = '<div class="traffic-item"><div class="t-title">Liikennetietoja ei voitu hakea</div></div>';
+  }
+}
 
-/* Keveä “siivous”: poista skriptit/tyylit, korvaa monilyönnit välilyönnillä */
+/* ===================== TILANNEHUONE (scrape) ===================== */
 function cleanHtmlToText(html){
   const tmp = document.createElement('div');
   tmp.innerHTML = html
     .replace(/<script[\s\S]*?<\/script>/gi,'')
     .replace(/<style[\s\S]*?<\/style>/gi,'');
   let text = tmp.textContent || tmp.innerText || '';
-
   return text
     .replace(/\u00AD/g,'')        // pehmeä tavuviiva pois (tieliikenne­onnettomuus)
     .replace(/\u00A0/g,' ')       // kovaväli -> välilyönti
     .replace(/\s*klo\s*/gi,' ')   // "klo" pois
-    // hh.mm(.ss) -> hh:mm(:ss)
-    .replace(/(\d{1,2})\.(\d{2})(?:\.(\d{2}))(?=\D|$)/g, '$1:$2:$3')
+    .replace(/(\d{1,2})\.(\d{2})(?:\.(\d{2}))(?=\D|$)/g, '$1:$2:$3') // 12.34(.56) -> 12:34(:56)
     .replace(/(\d{1,2})\.(\d{2})(?=\D|$)/g, '$1:$2')
     .replace(/\s+/g,' ')
     .trim();
 }
-
-  return text;
-}
-
-/* Parsitaan rivit malliin:
-   "Vantaa 28.08.2025 15:57:36 tieliikenneonnettomuus: pieni"
-   Palautetaan {city, time:Date, kind, level}
-*/
 function parseTilanne(text){
   const results = [];
-  // Kaupunki  d.m.yyyy  hh:mm(:ss)  KUVAUS(: taso)?
+  // Kaupunki  d.m.yyyy  hh:mm(:ss)  KUVAUS(: taso)?  (pysähtyy seuraavaan paikkaan joka alkaa isolla kirjaimella)
   const re = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{1,2}[./]\d{1,2}[./]\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+([^\n\r]+?)(?=\s+[A-ZÅÄÖ]|$)/g;
 
   let m;
   while ((m = re.exec(text)) !== null) {
     const city = m[1].trim();
-    const date = m[2].trim();          // esim. 28.8.2025
-    const time = m[3].trim();          // esim. 06:41:07
-    const tail = m[4].trim();          // esim. "tieliikenneonnettomuus: pieni"
+    const date = m[2].trim();
+    const time = m[3].trim();
+    const tail = m[4].trim();
 
-    // erottele "kuvaus: taso"
     let kind = tail;
     let level = '';
     const lv = tail.match(/:\s*(pieni|keskisuuri|suuri)\b/i);
@@ -599,103 +764,86 @@ function parseTilanne(text){
       kind  = tail.slice(0, lv.index).replace(/:\s*$/,'').trim();
     }
 
-    // Rakenna ISO-aika (salli 1-numeroiset pvm-osat)
     const [d, mo, y] = date.split(/[./]/).map(s=>s.trim());
     const iso = `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}T${time.padStart(5,'0')}`;
     const ts  = new Date(iso);
     if (!isNaN(ts.getTime())) {
-      // otsikko isolla alkukirjaimella
       const capKind = kind.charAt(0).toUpperCase() + kind.slice(1);
       results.push({ city, time: ts, kind: capKind, level });
     }
   }
   return results;
 }
-
-
-/* Isompi fontti isommalle tasolle */
-function levelClass(level){
-  const l = (level||'').toLowerCase();
-  if (l.includes('suuri')) return 'sev-large';
-  if (l.includes('keskisuuri')) return 'sev-medium';
-  return 'sev-small';
-}
-function capitalFirst(s){ return (s||'').charAt(0).toUpperCase() + (s||'').slice(1); }
-
-async function loadTilannehuone(){
-  const box = document.getElementById('th-list');
+async function loadTilanne(){
+  const box = document.getElementById('tilanne-list');
   if (!box) return;
-  box.innerHTML = '<div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div>';
-
+  box.innerHTML = '<div class="tilanne-item"><div class="th-title">Ladataan Tilannehuoneen hälytyksiä…</div></div>';
   try{
-    const r = await fetchWithTimeout(TH_URL(), 15000);
+    const page = 'https://www.tilannehuone.fi/halytys.php';
+    const url  = PROXY + encodeURIComponent(page) + '&_=' + Date.now();
+    const r = await fetchWithTimeout(url, 15000);
     const html = await r.text();
     if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!html || !html.trim()) throw new Error('Tyhjä vastaus');
+
     const text = cleanHtmlToText(html);
+    const items = parseTilanne(text);
 
-    // Parsitaan
-    let items = parseTilanne(text);
+    const now = Date.now();
+    const last24 = items
+      .filter(x => (now - x.time.getTime()) <= 24*60*60*1000)
+      .sort((a,b)=> b.time - a.time);
 
-   // …kun olet saanut `rawHtml` -> `text = cleanHtmlToText(rawHtml)` -> `items = parseTilanne(text)`
+    if (!last24.length){
+      box.innerHTML = `
+        <div class="tilanne-item">
+          <div class="th-title">Ei tuoreita hälytyksiä (24 h)</div>
+          <div class="th-meta">Tilannehuoneen sivun muoto saattoi muuttua. Yritä hetken päästä uudelleen.</div>
+        </div>`;
+      return;
+    }
 
-// 24 h ikkuna, uusimmat ensin
-const now = Date.now();
-const last24 = items
-  .filter(x => (now - x.time.getTime()) <= 24*60*60*1000)
-  .sort((a,b) => b.time - a.time);
-
-// jos tyhjä, näytä informatiivinen viesti
-if (!last24.length) {
-  listEl.innerHTML = `
-    <div class="traffic-item">
-      <div class="t-title">Ei tuoreita hälytyksiä (24 h)</div>
-      <div class="t-meta">Tilannehuone-sivun muoto saattoi muuttua. Yritä hetken päästä uudelleen.</div>
-    </div>`;
-  return;
-}
-
-// muuten renderöi
-listEl.innerHTML = last24.slice(0, 20).map(ev => {
-  // fonttikoko tason mukaan
-  const size =
-    ev.level === 'suuri' ? '1.25rem' :
-    ev.level === 'keskisuuri' ? '1.15rem' :
-    '1.05rem';
-
-  return `
-    <div class="traffic-item">
-      <div class="t-title" style="font-size:${size}">${ev.kind}${ev.level ? ` — ${ev.level}`:''}</div>
-      <div class="t-meta">${ev.city} • ${ev.time.toLocaleDateString('fi-FI')} ${ev.time.toLocaleTimeString('fi-FI')}</div>
-    </div>`;
-}).join('');
-
-
+    const htmlList = last24.slice(0, 20).map(ev=>{
+      const size =
+        ev.level === 'suuri' ? '1.25rem' :
+        ev.level === 'keskisuuri' ? '1.15rem' :
+        '1.05rem';
+      const levelTxt = ev.level ? ` — ${ev.level}` : '';
+      return `<div class="tilanne-item">
+        <div class="th-title" style="font-size:${size}">${ev.kind}${levelTxt}</div>
+        <div class="th-meta">${ev.city} • ${ev.time.toLocaleDateString('fi-FI')} ${ev.time.toLocaleTimeString('fi-FI')}</div>
+      </div>`;
+    }).join('');
+    box.innerHTML = htmlList;
   }catch(e){
     console.error('Tilannehuone:', e);
-    box.innerHTML = '<div class="th-item"><div class="th-title">Hälytyksiä ei voitu hakea</div></div>';
+    box.innerHTML = '<div class="tilanne-item"><div class="th-title">Tilannehuoneen tietoja ei voitu hakea</div></div>';
   }
 }
 
 /* ===================== INIT + PÄIVITYKSET ===================== */
 async function init(){
+  // Lisää mahdolliset asset-diat (vain jos tiedostot löytyvät)
+  await addAssetSlides();
+
   // Tapahtumat
   const ev = await loadICS(ICS_URL());   renderEvents('miehisto-events', ev);
   // Sää + varoitukset
   await loadFmiWeather();
   await loadWarnings();
+  // Liikenne
+  await loadTraffic();
   // Tilannehuone
-  await loadTilannehuone();
+  await loadTilanne();
 
   // Päivityssyklit
   setInterval(async ()=>{ const e=await loadICS(ICS_URL()); renderEvents('miehisto-events', e); }, 5*60*1000);
   setInterval(loadFmiWeather,  10*60*1000);
   setInterval(loadWarnings,    10*60*1000);
-  setInterval(loadTilannehuone, 5*60*1000);
+  setInterval(loadTraffic,      5*60*1000);
+  setInterval(loadTilanne,      5*60*1000);
 }
 init();
 </script>
 </body>
 </html>
-
-
-
