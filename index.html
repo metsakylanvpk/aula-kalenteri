@@ -645,23 +645,40 @@ function parseTilanneFromDom(html){
 /* Ikonit tehtävätyypeille */
 function taskIcon(title){
   const t = (title||'').toLowerCase();
-  if (/(rakennus|asunto).*(palo|palohäly)/.test(t) || /palohäly/.test(t)) return '🏠🔥';
+
+  // --- palot ---
+  if (/palohälytys|palokunta.*hälytys|paloilmoitin/.test(t)) return '🚒';
+  if (/rakennus.*palo|asunto.*palo|huoneisto.*palo/.test(t)) return '🏠🔥';
   if (/maasto.*palo|ruohikko|metsä.*palo/.test(t)) return '🌲🔥';
-  if (/tieliikenne.*onnettomuus|liikenneonnettomuus|kolari|uloshajo/.test(t)) return '🚗💥';
-  if (/vesiliikenne|vesi.*pelastus|vene/.test(t)) return '🛥️🆘';
+  if (/ajoneuvo.*palo|autopalo|linja-auto.*palo|kuorma-auto.*palo/.test(t)) return '🚗🔥';
+
+  // --- liikenne ---
+  if (/tieliikenne.*onnettomuus|liikenneonnettomuus|kolari/.test(t)) return '🚗💥';
+  if (/vesiliikenne|vene|meripelastus/.test(t)) return '🛥️🆘';
+  if (/lentoliikenne|ilmailu|lentokone|helikopteri/.test(t)) return '✈️';
+
+  // --- vuodot / aineet ---
   if (/öljy|polttoaine|kemikaali|vuoto/.test(t)) return '🛢️';
-  if (/vaaralliset aineet|vaar.*aine/.test(t)) return '☣️';
-  if (/ensivaste|ensiapu|sairaskohtaus|elvytys/.test(t)) return '🚑';
-  if (/savuhavainto|tutkimus/.test(t)) return '🔎🔥';
-  if (/sähkö|sähkölinja|muuntamo/.test(t)) return '⚡';
+  if (/vaaralliset.*aineet|kaasuvuoto/.test(t)) return '☣️';
+  if (/räjähdys|räjähde/.test(t)) return '💥';
+
+  // --- vesi / myrsky ---
   if (/tulva|vesivahinko|putkirikko/.test(t)) return '💧';
-  if (/sortuma|rakennusvaurio|romahdus/.test(t)) return '🧱';
-  if (/räjähdys|kaasuvuoto/.test(t)) return '💥';
-  if (/eläin|kissa|koira|hirvi|peura/.test(t)) return '🐾';
-  if (/nosto|tikas|henkilön nosto|pelastuskalusto/.test(t)) return '🪜';
-  if (/lentoliikenne|ilmailu|lentokone/.test(t)) return '✈️';
+  if (/sähkö|sähkölinja|muuntamo/.test(t)) return '⚡';
+  if (/myrsky|puu.*tiellä/.test(t)) return '🌬️';
+
+  // --- henkilöt / eläimet ---
+  if (/etsintä|kadonnut/.test(t)) return '🔎';
+  if (/ensivaste|sairaskohtaus|elvytys/.test(t)) return '🚑';
+  if (/eläin|koira|kissa|hirvi|peura|poro/.test(t)) return '🐾';
+
+  // --- virka-apu / poliisi ---
+  if (/poliisi|virka-apu poliisille/.test(t)) return '🚓';
+
+  // fallback
   return '🆘';
 }
+
 
 async function loadTilannehuone(){
   const box = document.getElementById('th-list');
@@ -824,3 +841,4 @@ init();
 </script>
 </body>
 </html>
+
