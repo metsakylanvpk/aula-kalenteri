@@ -628,6 +628,12 @@ async function loadTilannehuone(){
   const sevClass = s => s==='large' ? 'sev-large' : (s==='medium' ? 'sev-medium' : 'sev-small');
 
   try{
+   // VANHA (rikki): 
+// const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/lista.php?list=disorder') + '&_=' + Date.now();
+
+// UUSI (sama sivusto, 24h-lista):
+const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
+
     const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/lista.php?list=disorder') + '&_=' + Date.now();
     const html = await fetchWithTimeout(url, 15000).then(r=>r.text());
     console.debug('[Tilannehuone] fetched HTML head:', (html||'').slice(0,200));
@@ -837,6 +843,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
