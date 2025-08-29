@@ -9,8 +9,8 @@
     --gap: 16px;
     --panel-pad: 16px;
     --header-h: 64px;
-    --accent: #007b83;
-    --slide-time-ms: 20000;
+    --accent: #007b83;         /* yhtenäinen tehosteväri */
+    --slide-time-ms: 20000;    /* 20 s per näkymä */
   }
   html,body{
     margin:0;height:100vh;width:100vw;background:#e9eef3;color:#111;
@@ -23,6 +23,7 @@
     background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:8px;z-index:10
   }
 
+  /* SLIDES */
   .slides{height:100%;width:100%;position:relative}
   .slide{
     position:absolute;inset:0;background:#fff;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.15);
@@ -37,7 +38,7 @@
   }
   .slide-body{
     background:#f2f6fa;padding:var(--panel-pad);
-    overflow:hidden;
+    overflow:hidden;              /* desktop: ei scrollia */
     -webkit-overflow-scrolling:auto;
   }
 
@@ -53,6 +54,7 @@
   }
   .event-title{font-weight:800;font-size:1.18rem;word-break:break-word}
   .event-description{margin-top:6px;color:#333;font-size:1.02rem}
+
   @media (min-width: 1025px){
     .events-list{grid-auto-rows:minmax(0,1fr)}
     .event-card{padding:14px 16px}
@@ -67,12 +69,18 @@
     display:grid; gap:16px;
     grid-template-rows:auto auto 1fr;
     grid-template-columns:1fr;
-    grid-template-areas:"wx" "fc" "warn";
+    grid-template-areas:
+      "wx"
+      "fc"
+      "warn";
   }
   .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
   .panel-h{height:48px;display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;padding:0 12px;background:var(--accent)}
   .panel-b{background:#f2f6fa;padding:12px}
-  .p-wx{grid-area:wx} .p-fc{grid-area:fc} .p-warn{grid-area:warn}
+
+  .p-wx   {grid-area: wx}
+  .p-fc   {grid-area: fc}
+  .p-warn {grid-area: warn}
 
   .weather-card{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:10px}
   .w-city{font-size:1.2rem;font-weight:900}
@@ -97,37 +105,25 @@
   .w-desc{font-size:.98rem}
   .lvl-yellow .warn-icon{background:#f2c744;color:#1d1d1f}
   .lvl-orange .warn-icon{background:#ff9800}
-  .lvl-red .warn-icon{background:#e53935}
+  .lvl-red    .warn-icon{background:#e53935}
 
   /* ======= TILANNEHUONE ======= */
   .tilanne .slide-header{background:var(--accent)}
-  .th-list{display:grid;gap:12px;max-width:1600px;margin:0 auto}
-  .th-item{
-    background:#fff;border-radius:12px;padding:12px 16px;box-shadow:0 2px 8px rgba(0,0,0,.12);
-    transition: transform .15s ease, opacity .15s ease;
-  }
-  .th-top{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline}
+  .th-list{display:grid;gap:10px;max-width:1100px;margin:0 auto;} /* kapeampi leveys */
+  .th-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12);transition:opacity .2s}
+  .th-item.ended-card{opacity:.6;filter:grayscale(.15)}
+  .th-top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
   .th-city{font-weight:900}
   .th-time{font-size:.95rem;opacity:.8}
   .th-title{font-weight:800;margin-top:4px}
   .th-sev{margin-left:6px;font-weight:900}
+  .sev-small .th-title{font-size:1.06rem}
+  .sev-medium .th-title{font-size:1.14rem}
+  .sev-large .th-title{font-size:1.22rem}
+  .th-desc{margin-top:8px;color:#222;white-space:pre-line;line-height:1.28}
+  .th-ended{margin-top:6px;font-size:.95rem;color:#555}
 
-  .sev-small { font-size:1rem; }
-  .sev-medium{ font-size:1.06rem; }
-  .sev-large { font-size:1.12rem; }
-
-  .th-desc{margin-top:8px;color:#222;line-height:1.35}
-  .th-desc div + div{ margin-top:4px; }
-  .th-ended{margin-top:6px;font-size:.95rem;color:#666}
-  .ended-card{ opacity:.65; }
-
-  /* ======= ASSET-diat (valmiina jos tarvitsette) ======= */
-  .slide.asset .slide-header{ background: var(--accent); }
-  .slide.asset .slide-body{ display:grid;place-items:center;overflow:hidden;background:#000; }
-  .asset-wrap{ width:100%;height:100%;display:grid;place-items:center;background:#000; }
-  .asset-wrap img{ max-width:100%;max-height:100%;height:auto;object-fit:contain;background:#000; }
-  .asset-wrap iframe{ width:100%;height:100%;border:0;background:#fff; }
-
+  /* ======= MOBIILI ======= */
   @media (max-width: 1024px){
     #clock{display:none}
     .slide-body{
@@ -138,7 +134,6 @@
     }
     .forecast{grid-template-columns:repeat(3,1fr)}
     .wx-grid{height:auto; max-width:none}
-    .slide.asset .slide-body{ overflow:auto; -webkit-overflow-scrolling:touch; }
   }
 </style>
 </head>
@@ -205,7 +200,7 @@
 <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
 /* ===================== YLEISET ===================== */
-const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';
+const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← VAIHDA tarvittaessa
 const SLIDES = ['slide-events','slide-wx','slide-tilanne'];
 let   slideIndex = 0;
 const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
@@ -232,6 +227,7 @@ let autoTimer = setInterval(()=>{
   showSlide(slideIndex);
 }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
 
+/* Swipe vaihtoon */
 (function enableSwipe(){
   const container = document.getElementById('slides');
   if (!container) return;
@@ -260,6 +256,7 @@ let autoTimer = setInterval(()=>{
   },{passive:true});
 })();
 
+/* ===== apurit ===== */
 async function fetchWithTimeout(url, ms=12000, opts={}){
   const ctrl = new AbortController(); const id = setTimeout(()=>ctrl.abort(), ms);
   try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store', ...opts}); clearTimeout(id); return r; }
@@ -286,11 +283,9 @@ function getDateColor(summary) {
   if (t.includes('auto')) return '#fc832f';
   if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f';
   if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638';
-  if (t.includes('päätös')) return '#fcd854';
-  if (t.includes('kokous')) return '#fcd854';
+  if (t.includes('päätös') || t.includes('kokous')) return '#fcd854';
   if (t.includes('esittely') || t.includes('alkusammutus') || t.includes('tapahtuma')) return '#7ab638';
-  if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift')) return '#7ab638';
-  if (t.includes('juhla')) return '#7ab638';
+  if (t.includes('jokkis') || t.includes('ralli') || t.includes('drift') || t.includes('juhla')) return '#7ab638';
   return '#2178a1';
 }
 function formatEventDate(sDate, eDate, allDay=false) {
@@ -351,6 +346,7 @@ function renderEvents(containerId, payload) {
 
 /* ===================== SÄÄ (FMI) ===================== */
 const KL = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 };
+
 function wxEmoji(symbol){
   const s = Number(symbol);
   if ([1].includes(s)) return '☀️';
@@ -393,17 +389,20 @@ async function loadFmiWeather(){
     <div class="w-city">${KL.name}</div>
     <div class="w-temp muted">…</div>
     <div class="w-row"><span class="w-badge">Ladataan FMI-säätietoja…</span></div>`;
-
   try{
     const base = 'https://opendata.fmi.fi/wfs';
     const now  = new Date();
     const end  = new Date(now.getTime() + 9*60*60*1000);
     const params = new URLSearchParams({
-      service:'WFS', version:'2.0.0', request:'GetFeature',
+      service:'WFS',
+      version:'2.0.0',
+      request:'GetFeature',
       storedquery_id:'fmi::forecast::harmonie::surface::point::timevaluepair',
       latlon:`${KL.lat},${KL.lon}`,
       parameters:'temperature,windSpeedMS,WeatherSymbol3,precipitation1h',
-      starttime: now.toISOString(), endtime: end.toISOString(), timestep:'60'
+      starttime: now.toISOString(),
+      endtime:   end.toISOString(),
+      timestep:  '60'
     });
     const url = PROXY + encodeURIComponent(`${base}?${params.toString()}`) + '&_=' + Date.now();
     const r = await fetchWithTimeout(url, 15000);
@@ -413,7 +412,7 @@ async function loadFmiWeather(){
     if (!rows.length) throw new Error('FMI: tyhjä vastaus');
 
     const nowMs = Date.now();
-    const current = rows.reduce((best,rec)=>{
+    let current = rows.reduce((best,rec)=>{
       const d = Math.abs(rec.time - nowMs);
       return (best==null || d < best.d) ? { rec, d } : best;
     }, null)?.rec || rows[0];
@@ -440,7 +439,7 @@ async function loadFmiWeather(){
         <div class="fc-sub">${wxEmoji(r.SYM||0)} ${isFinite(r.RR)? r.RR.toFixed(1):'–'} mm/h • ${isFinite(r.WS)? Math.round(r.WS):'–'} m/s</div>
       </div>
     `).join('');
-  }catch{
+  }catch(e){
     card.innerHTML = `
       <div class="w-city">${KL.name}</div>
       <div class="w-temp">–</div>
@@ -511,21 +510,22 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== TILANNEHUONE – viimeiset 24h + LISÄINFO ===================== */
+/* ===================== TILANNEHUONE ===================== */
 const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
 
-/* Perussiivous (poista script/style, pehmeät tavuviivat jne.) */
+/* listatekstin -> objektit */
 function cleanHtmlToText(html){
   const tmp = document.createElement('div');
-  tmp.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
+  tmp.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi,'')
+                      .replace(/<style[\s\S]*?<\/style>/gi,'')
+                      .replace(/<noscript[\s\S]*?<\/noscript>/gi,'')
+                      .replace(/<!--[\s\S]*?-->/g,'');
   const text = tmp.textContent || tmp.innerText || '';
-  return text.replace(/\u00AD/g,'').replace(/\s+\n/g,'\n').trim();
+  return text.replace(/\u00AD/g,'').replace(/\s+/g,' ').trim();
 }
-
-/* Listasivun rivi: "Kaupunki pvm aika kuvaus: taso" -> {city,time,kind,level} */
 function parseTilanne(text){
   const results = [];
-  const re = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+([^\n\r]+?)(?=\s+[A-ZÅÄÖ]|$)/g;
+  const re = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{1,2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+([^\n\r]+?)(?=\s+[A-ZÅÄÖ]|$)/g;
   let m;
   while ((m = re.exec(text)) !== null) {
     const city = m[1].trim();
@@ -536,27 +536,21 @@ function parseTilanne(text){
     const lv = tail.match(/:\s*(pieni|keskisuuri|suuri)\b/i);
     if (lv) { level = lv[1].toLowerCase(); kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim(); }
     const [d,mo,y] = date.split('.');
-    const ts = new Date(`${y}-${mo}-${d}T${time.length===5?time+':00':time}`);
+    const ts = new Date(`${y}-${mo.padStart(2,'0')}-${String(d).padStart(2,'0')}T${time.length===5?time+':00':time}`);
     if (!isNaN(ts.getTime())) results.push({ city, time: ts, kind, level });
   }
   return results;
 }
-
-/* Poista sivuston navigaatio/footereiden rivit lisäinfosivulta */
-function pruneSiteNoise(lines){
-  const kill = [
-    /^Tilannehuone\.fi/i, /^Pääuutiset/i, /^Hälytyslista/i, /^Kartta/i, /^Tietokanta/i,
-    /^Liikenne/i, /^ETUSIVU/i, /^MEDIATIEDOT/i, /^YHTEYSTIEDOT/i, /^PALAUTE/i,
-    /^Juuri nyt:/i, /^Login/i, /^Rekisteröidy/i, /^Ohjeita/i, /^Unohditko/i,
-    /^Uusimmat/i, /^Kuvat/i, /^Poliisitehtäviä/i, /^Julkaisija/i, /^Tietosuojaseloste/i,
-    /©\s*\d{4}\s*Tilannehuone\.fi/i, /\|\s*Arknet/i
-  ];
-  return lines.filter(l=>l && !kill.some(rx=>rx.test(l)));
+function capitalFirst(s){ return (s||'').charAt(0).toUpperCase() + (s||'').slice(1); }
+function levelCardClass(level){
+  const l=(level||'').toLowerCase();
+  if (l.includes('suuri')) return 'sev-large';
+  if (l.includes('keskisuuri')) return 'sev-medium';
+  return 'sev-small';
 }
 
-/* Valitse lisäinfosivulta pienin elementti, joka sisältää kiinnostavat kentät */
+/* Tehtäväsivun siivous ja muotoilu */
 function extractDetailFromPage(html){
-  // Poista skriptit/tyylit/noscript mainokset jo parseriin ennen
   html = html
     .replace(/<script[\s\S]*?<\/script>/gi,'')
     .replace(/<style[\s\S]*?<\/style>/gi,'')
@@ -565,138 +559,126 @@ function extractDetailFromPage(html){
 
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
-  // Siivoa selkeitä roskapalikoita pois DOM:sta
+  // roskat pois
   const junkSel = [
     'header','nav','footer','.sidebar','.breadcrumbs','.pfade',
     '.share-buttons','.whatsapp-widget-button','.whatsapp-widget-message',
-    '#tilannehuone_desktop-top','#tilannehuone_desktop-box-1',
     '[id*="anchor"]','[id*="interstitial"]','[id*="sidebar"]','[class*="ad"]'
   ].join(',');
   doc.querySelectorAll(junkSel).forEach(el=>el.remove());
 
-  // Ehdokkaat: artikkelimaiset kontit, joissa on tekstiä
-  const candidates = Array.from(doc.querySelectorAll('article, main, #content, .content, .post, .entry, .card, .container, body'))
+  // hae teksti kontista, jossa esiintyy metakenttiä
+  const cands = Array.from(doc.querySelectorAll('article, main, #content, .content, .post, .entry, .container, body'))
     .filter(el => (el.innerText||'').trim().length);
-
   const hasKey = t => /Ajankohta:|Paikka:|Tarkempi paikka:|Päivitetty:/i.test(t);
-
-  // Valitse pienin elementti, joka sisältää avainsanat; fallback: body
   let picked = '';
-  for (const el of candidates){
-    const t = (el.innerText||'').trim().replace(/\u00AD/g,''); // pehmeä tavuviiva pois
+  for (const el of cands){
+    const t = (el.innerText||'').trim().replace(/\u00AD/g,'');
     if (hasKey(t)){
       if (!picked || t.length < picked.length) picked = t;
     }
   }
   if (!picked) picked = (doc.body?.innerText||'').trim().replace(/\u00AD/g,'');
 
-  // Riveiksi, tiputa selvä melu
+  // pilko riveiksi ja siivoa
   let lines = picked.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   const kill = [
     /^Tilannehuone\.fi/i,/^Pääuutiset/i,/^Hälytyslista/i,/^Kartta/i,/^Tietokanta/i,
     /^Liikenne/i,/^ETUSIVU/i,/^MEDIATIEDOT/i,/^YHTEYSTIEDOT/i,/^PALAUTE/i,
     /^Juuri nyt:/i,/^Login/i,/^Rekisteröidy/i,/^Ohjeita/i,/^Unohditko/i,
     /^Uusimmat/i,/^Kuvat/i,/^Poliisitehtäviä/i,/^Julkaisija/i,/^Tietosuojaseloste/i,
-    /©\s*\d{4}\s*Tilannehuone\.fi/i,/\|\s*Arknet/i,/^lwhbim\./i,/^var\s+/i,/^@media/i
+    /©\s*\d{4}\s*Tilannehuone\.fi/i,/\|\s*Arknet/i,/^lwhbim\./i,/^var\s+/i,/^@media/i,
+    /^Avaa tehtäväsivu/i,/^Lisätty:/i,/^päivitetty:/i,/^Fintraffic$/i
   ];
   lines = lines.filter(l => !kill.some(rx=>rx.test(l)));
 
-  // Katkaise viimeiseen Ajankohta/Päivitetty-riviin
+  // katkaise viimeiseen Ajankohta/Päivitetty -riviin
   const lastMeta = Math.max(
     lines.map((l,i)=>/^Ajankohta:/i.test(l)?i:-1).reduce((a,b)=>Math.max(a,b),-1),
-    lines.map((l,i)=>/^Päivitetty:/i.test(l)?i:-1).reduce((a,b)=>Math.max(a,b),-1),
+    lines.map((l,i)=>/^Päivitetty:/i.test(l)?i:-1).reduce((a,b)=>Math.max(a,b),-1)
   );
   if (lastMeta >= 0) lines = lines.slice(0, lastMeta+1);
 
   return lines.join('\n');
 }
-  
+function formatDetail(text){
+  if (!text) return '';
+  // nosta Paikka/Tarkempi paikka/Ajankohta/Päivitetty omille riveilleen ja poista tuplat
+  let lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+
+  // yhdistä mahdolliset “Paikka: … Tarkempi paikka: …” samalle loogiselle blokille mutta eri riveille
+  const out = [];
+  for (let l of lines){
+    l = l.replace(/\s+/g,' ');
+    out.push(l);
+  }
+  // lopullinen render
+  const keepKeys = ['Paikka:','Tarkempi paikka:','Ajankohta:','Päivitetty:'];
+  const dedup = [];
+  const seen = new Set();
+  for (const l of out){
+    const key = keepKeys.find(k => l.startsWith(k));
+    if (key){
+      const marker = key + l.slice(key.length).trim();
+      if (seen.has(marker)) continue;
+      seen.add(marker);
+    }
+    dedup.push(l);
+  }
+  // poista turhat lopputagit vielä kerran
+  const finalLines = dedup.filter(l =>
+    !/^Avaa tehtäväsivu/i.test(l) &&
+    !/^Lisätty:/i.test(l) &&
+    !/^päivitetty:/i.test(l) &&
+    !/^Fintraffic$/i.test(l)
+  );
+  return `<div class="th-desc">${finalLines.join('\n')}</div>`;
+}
+
+/* Etsi oikea tehtäväsivun linkki tälle itemille listan HTML:stä (läheisyys) */
 function findDetailUrlForItem(listHtml, item){
-  // Rakenna etsittävä “ankkuri” tekstinä listaan, jotta löydetään oikea kohta
-  const date = item.time; // Date
+  const date = item.time;
   const dd = String(date.getDate()).padStart(2,'0');
   const mm = String(date.getMonth()+1).padStart(2,'0');
   const yyyy = date.getFullYear();
   const hh = String(date.getHours()).padStart(2,'0');
   const mi = String(date.getMinutes()).padStart(2,'0');
   const ss = String(date.getSeconds()).padStart(2,'0');
-  // Tilannehuoneen listalla sekunnit voivat olla ilman etunollaa; sallitaan molemmat
-  const stampVariants = [
+  const variants = [
     `${dd}.${mm}.${yyyy} ${hh}:${mi}:${ss}`,
-    `${dd}.${mm}.${yyyy} ${hh}:${mi}:${String(ss).replace(/^0/,'')}`
+    `${dd}.${mm}.${yyyy} ${hh}:${mi}:${String(ss).replace(/^0/,'')}`,
+    `${dd}.${mm}.${yyyy} ${hh}:${mi}`
   ];
 
-  // Etsi listan HTML:stä kaupungin nimen + aikaleiman ensimmäinen osuma
-  let pos = -1;
-  for (const st of stampVariants){
-    const idx = listHtml.indexOf(item.city) >= 0 ? listHtml.indexOf(item.city) : -1;
-    const idx2 = st !== -1 ? listHtml.indexOf(st, Math.max(0, idx)) : -1;
-    if (idx2 !== -1){ pos = idx2; break; }
-  }
-  if (pos === -1){
-    // fallback: etsi pelkkä päivämäärä hh:mm
-    const shortStamp = `${dd}.${mm}.${yyyy} ${hh}:${mi}`;
-    pos = listHtml.indexOf(shortStamp);
-  }
-  if (pos === -1) return null;
-
-  // Parsitaan DOM ja etsitään ankkuri, joka tulee pian tämän tekstipositionsa jälkeen
   const doc = new DOMParser().parseFromString(listHtml, 'text/html');
+  const fullText = (doc.body?.innerText || '').replace(/\u00AD/g,'');
+  let anchorPos = -1;
+  for (const v of variants){
+    const cityPos = fullText.indexOf(item.city);
+    const tPos = fullText.indexOf(v, Math.max(0, cityPos));
+    if (tPos !== -1){ anchorPos = tPos; break; }
+  }
+  if (anchorPos === -1) return null;
+
   const anchors = Array.from(doc.querySelectorAll('a')).filter(a=>{
     const t = (a.textContent||'').trim();
     const href = a.getAttribute('href')||'';
-    return /Avaa\s+tehtäväsivu/i.test(t) || /tehtava|tehtäv/i.test(href);
+    return /Avaa\s+tehtäväsivu/i.test(t) || /tehtav|tehtävä/i.test(href);
   });
 
-  // pisteytä ankkurit: mitä lähempänä tekstinosumaa DOM:in textContent-indeksissä, sen parempi
-  const fullText = (doc.body?.innerText||'');
-  let best = null, bestDist = Infinity;
+  let best=null, bestDist=Infinity;
   for (const a of anchors){
-    const tpos = fullText.indexOf(a.textContent?.trim()||'');
-    if (tpos === -1) continue;
-    const d = Math.abs(tpos - pos);
-    if (d < bestDist){ best = a; bestDist = d; }
+    const txt = a.textContent ? a.textContent.trim() : '';
+    const pos = fullText.indexOf(txt);
+    if (pos === -1) continue;
+    const d = Math.abs(pos - anchorPos);
+    if (d < bestDist){ best=a; bestDist=d; }
   }
-
   if (!best) return null;
   try { return new URL(best.getAttribute('href'), 'https://www.tilannehuone.fi').href; }
   catch { return null; }
 }
 
-
-/* Rakenna nätit rivit korttiin */
-function formatDetail(detailRaw){
-  if (!detailRaw) return '';
-  const lines = detailRaw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-
-  let paikka = '', tarkempi = '', ajankohta = '', paivitetty = '';
-  const others = [];
-
-  for (const l of lines){
-    if (/^Fintraffic$/i.test(l)) continue;
-    if (/^Avaa\s+tehtäväsivu/i.test(l)) continue;
-    if (/^Lisätty:/i.test(l)) continue;
-    if (/^Lisätty:.*päivitetty:/i.test(l)) continue;
-
-    if (/^Paikka:/i.test(l))          { paikka = l.replace(/^Paikka:\s*/i,'').trim(); continue; }
-    if (/^Tarkempi paikka:/i.test(l)) { tarkempi = l.replace(/^Tarkempi paikka:\s*/i,'').trim(); continue; }
-    if (/^Ajankohta:/i.test(l))       { ajankohta = l.replace(/^Ajankohta:\s*/i,'').trim(); continue; }
-    if (/^Päivitetty:/i.test(l))      { paivitetty = l.replace(/^Päivitetty:\s*/i,'').trim(); continue; }
-
-    others.push(l);
-  }
-
-  let html = '<div class="th-desc">';
-  if (others.length)   html += `<div>${others.join(' ')}</div>`;
-  if (paikka)          html += `<div><strong>Paikka:</strong> ${paikka}</div>`;
-  if (tarkempi)        html += `<div><strong>Tarkempi paikka:</strong> ${tarkempi}</div>`;
-  if (ajankohta)       html += `<div><strong>Ajankohta:</strong> ${ajankohta}</div>`;
-  if (paivitetty)      html += `<div><strong>Päivitetty:</strong> ${paivitetty}</div>`;
-  html += '</div>';
-  return html;
-}
-
-/* Hae lisäinfosivut linkeistä (listan HTML:stä) ja poimi vain varsinainen sisältö */
 async function fetchDetailsForItems(listHtml, items){
   const out = [];
   for (const it of items){
@@ -712,16 +694,6 @@ async function fetchDetailsForItems(listHtml, items){
   return out;
 }
 
-
-/* Kortin skaalausluokka tason mukaan */
-function levelCardClass(level){
-  const l = (level||'').toLowerCase();
-  if (l.includes('suuri')) return 'sev-large';
-  if (l.includes('keskisuuri')) return 'sev-medium';
-  return 'sev-small';
-}
-function capitalFirst(s){ return (s||'').charAt(0).toUpperCase() + (s||'').slice(1); }
-
 async function loadTilannehuone(){
   const box = document.getElementById('th-list');
   if (!box) return;
@@ -732,13 +704,14 @@ async function loadTilannehuone(){
     const html = await r.text();
     if (!r.ok) throw new Error('HTTP ' + r.status);
 
+    // listan teksti -> perusrivit
     const text = cleanHtmlToText(html);
     let items = parseTilanne(text);
 
+    // 24h ikkuna, uusin ensin, max 20
     const now = Date.now();
-    const dayMs = 24*60*60*1000;
     items = items
-      .filter(it => (now - it.time.getTime()) <= dayMs)
+      .filter(it => (now - it.time.getTime()) <= 24*60*60*1000)
       .sort((a,b)=>b.time - a.time)
       .slice(0,20);
 
@@ -747,25 +720,25 @@ async function loadTilannehuone(){
       return;
     }
 
-// ... kun items on rajattu ja järjestetty ...
-const details = await fetchDetailsForItems(html, items);
+    // hae lisäinfot täsmäyslinkeillä
+    const details = await fetchDetailsForItems(html, items);
 
-box.innerHTML = items.map((it, idx)=>{
-  const ended = (Date.now() - it.time.getTime()) > 3*60*60*1000;
-  const sevCard = levelCardClass(it.level);
-  const levelTxt = it.level ? ` <span class="th-sev">(${capitalFirst(it.level)})</span>` : '';
-  const detailHtml = details[idx] ? formatDetail(details[idx]) : '';
-  return `<div class="th-item ${sevCard}${ended?' ended-card':''}">
-    <div class="th-top">
-      <div class="th-city">${it.city}</div>
-      <div class="th-time">${it.time.toLocaleString('fi-FI')}</div>
-    </div>
-    <div class="th-title">${capitalFirst(it.kind || 'Hälytys')}${levelTxt}</div>
-    ${detailHtml}
-    ${ended ? `<div class="th-ended"><strong>Tilanne ohi</strong></div>` : ''}
-  </div>`;
-}).join('');
-
+    // render
+    box.innerHTML = items.map((it, idx)=>{
+      const ended = (Date.now() - it.time.getTime()) > 3*60*60*1000;
+      const sevCard = levelCardClass(it.level);
+      const levelTxt = it.level ? ` <span class="th-sev">(${capitalFirst(it.level)})</span>` : '';
+      const detailHtml = details[idx] ? formatDetail(details[idx]) : '';
+      return `<div class="th-item ${sevCard}${ended?' ended-card':''}">
+        <div class="th-top">
+          <div class="th-city">${it.city}</div>
+          <div class="th-time">${it.time.toLocaleString('fi-FI')}</div>
+        </div>
+        <div class="th-title">${capitalFirst(it.kind || 'Hälytys')}${levelTxt}</div>
+        ${detailHtml}
+        ${ended ? `<div class="th-ended"><strong>Tilanne ohi</strong></div>` : ''}
+      </div>`;
+    }).join('');
 
   }catch(e){
     console.error('Tilannehuone:', e);
@@ -775,11 +748,15 @@ box.innerHTML = items.map((it, idx)=>{
 
 /* ===================== INIT + PÄIVITYKSET ===================== */
 async function init(){
+  // Tapahtumat
   const ev = await loadICS(ICS_URL());   renderEvents('miehisto-events', ev);
+  // Sää + varoitukset
   await loadFmiWeather();
   await loadWarnings();
+  // Tilannehuone
   await loadTilannehuone();
 
+  // Päivitykset
   setInterval(async ()=>{ const e=await loadICS(ICS_URL()); renderEvents('miehisto-events', e); }, 5*60*1000);
   setInterval(loadFmiWeather,  10*60*1000);
   setInterval(loadWarnings,    10*60*1000);
@@ -789,4 +766,3 @@ init();
 </script>
 </body>
 </html>
-
