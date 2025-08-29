@@ -113,26 +113,29 @@
 
   /* ======= TILANNEHUONE ======= */
   .tilanne .slide-header{background:var(--accent)}
+  .th-wrap{max-width:1600px; margin:0 auto;}           /* kavennus kuten sää-dialla */
   .th-list{display:grid;gap:10px}
-  .th-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  .th-item{
+    background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.12);
+    padding:12px 14px;
+    font-size:1rem;                                    /* skaalauksen peruskerroin */
+  }
+  .th-item.sev-medium{ font-size:1.10rem; }           /* keskisuuri -> suurempi koko */
+  .th-item.sev-large { font-size:1.22rem; }           /* suuri -> vielä isompi */
   .th-top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
   .th-city{font-weight:900}
-  .th-time{font-size:.95rem;opacity:.8}
+  .th-time{font-size:.95em;opacity:.8}                 /* em suhteessa kortin fonttiin */
   .th-title{font-weight:800;margin-top:4px}
-  .th-sev{margin-left:6px;font-weight:900}
-  .sev-small{font-size:1.05rem}
-  .sev-medium{font-size:1.12rem}
-  .sev-large{font-size:1.18rem}
   .th-desc{margin-top:6px;color:#333}
-  .th-ended{margin-top:6px;font-size:.95rem;color:#555}
+  .th-ended{margin-top:6px;font-size:.95em;color:#555}
 
   /* ======= ASSET DIAT (kuva/pdf/html) ======= */
   .slide.asset .slide-header{ background: var(--accent); }
   .slide.asset .slide-body{
     display: grid;
     place-items: center;
-    overflow: hidden;             /* desktop: ei scrollia */
-    background: #000;             /* parempi tausta kuville/pdf:lle */
+    overflow: hidden;
+    background: #000;
   }
   .asset-wrap{
     width: 100%;
@@ -167,6 +170,9 @@
     .forecast{grid-template-columns:repeat(3,1fr)}
     .wx-grid{height:auto; max-width:none}
     .slide.asset .slide-body{ overflow:auto; -webkit-overflow-scrolling:touch; }
+    /* hieman hillitympi skaala mobiilissa */
+    .th-item.sev-medium{ font-size:1.06rem; }
+    .th-item.sev-large { font-size:1.14rem; }
   }
 </style>
 </head>
@@ -222,12 +228,14 @@
   <section class="slide tilanne" id="slide-tilanne" aria-label="Tilannehuone">
     <div class="slide-header">Tilannehuone</div>
     <div class="slide-body">
-      <div id="th-list" class="th-list">
-        <div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div>
+      <div class="th-wrap">
+        <div id="th-list" class="th-list">
+          <div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div>
+        </div>
       </div>
     </div>
   </section>
-  <!-- HUOM: Asset-diat lisätään JS:llä tämän jälkeen automaattisesti -->
+  <!-- Asset-diat lisätään JS:llä tämän jälkeen automaattisesti -->
 </div>
 
 <!-- ical.js tapahtumille -->
@@ -241,7 +249,7 @@ const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
 
 /* === ASSET-DIAT: muokkaa tähän tiedostot, joita haluat näyttää === */
 const CUSTOM_ASSETS = [
-  // Esimerkkejä — poista tai vaihda polut teidän tiedostoihin:
+  // Esimerkkejä – ota kommentit pois ja päivitä polut, jos haluat näyttää nämä:
   // { type: 'img',  title: 'Infokuva',    src: './info.jpg' },
   // { type: 'pdf',  title: 'Ohjeistus',   src: './ohje.pdf#view=FitH&toolbar=0&navpanes=0' },
   // { type: 'page', title: 'Tiedotesivu', src: './tiedote.html' },
@@ -557,7 +565,7 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== TILANNEHUONE – “viimeiset 24h” ===================== */
+/* ===================== TILANNEHUONE – viimeiset 24h ===================== */
 const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
 
 function cleanHtmlToText(html){
@@ -566,6 +574,7 @@ function cleanHtmlToText(html){
   const text = tmp.textContent || tmp.innerText || '';
   return text.replace(/\u00AD/g,'').replace(/\s+/g,' ').trim();
 }
+/* Palauttaa {city, time:Date, kind, level} */
 function parseTilanne(text){
   const results = [];
   const re = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+([^\n\r]+?)(?=\s+[A-ZÅÄÖ]|$)/g;
@@ -575,6 +584,7 @@ function parseTilanne(text){
     const date = m[2].trim();
     const time = m[3].trim();
     const tail = m[4].trim();
+
     let kind = tail;
     let level = '';
     const lv = tail.match(/:\s*(pieni|keskisuuri|suuri)\b/i);
@@ -625,14 +635,13 @@ async function loadTilannehuone(){
       const ended = (now - it.time.getTime()) > 3*60*60*1000; // > 3 h => “Tilanne ohi”
       const timeText = it.time.toLocaleString('fi-FI');
       const sevCls = levelClass(it.level);
-      const levelTxt = it.level ? ` <span class="th-sev ${sevCls}">(${capitalFirst(it.level)})</span>` : '';
       const titleTxt = capitalFirst(it.kind || 'Hälytys');
-      return `<div class="th-item">
+      return `<div class="th-item ${sevCls}">
         <div class="th-top">
           <div class="th-city">${it.city}</div>
           <div class="th-time">${timeText}</div>
         </div>
-        <div class="th-title">${titleTxt}${levelTxt}</div>
+        <div class="th-title">${titleTxt}</div>
         ${ended ? `<div class="th-ended"><strong>Tilanne ohi</strong></div>` : ''}
       </div>`;
     }).join('');
@@ -646,10 +655,8 @@ async function loadTilannehuone(){
 /* ===================== ASSET-DIAT (kuva/pdf/html) ===================== */
 async function exists(url){
   try{
-    // HEAD ensin
     const r = await fetch(url, { method:'HEAD', cache:'no-store' });
     if (r.ok) return true;
-    // osa ympäristöistä ei salli HEADia -> kokeile kevyt GET timeoutilla
     const g = await fetchWithTimeout(url, 6000, { method:'GET' });
     return g.ok;
   }catch{ return false; }
@@ -696,7 +703,7 @@ async function addAssetSlides(){
       wrap.appendChild(img);
     } else if (type === 'pdf') {
       const iframe = document.createElement('iframe');
-      iframe.src = asset.src;          // esim: './ohje.pdf#view=FitH&toolbar=0&navpanes=0'
+      iframe.src = asset.src;
       wrap.appendChild(iframe);
     } else {
       const iframe = document.createElement('iframe');
