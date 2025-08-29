@@ -112,7 +112,6 @@
   .th-title{font-weight:800;margin-top:4px}
   .th-sev{margin-left:6px;font-weight:900}
 
-  /* kortin skaalaukset */
   .sev-small { font-size:1rem; }
   .sev-medium{ font-size:1.06rem; }
   .sev-large { font-size:1.12rem; }
@@ -122,7 +121,7 @@
   .th-ended{margin-top:6px;font-size:.95rem;color:#666}
   .ended-card{ opacity:.65; }
 
-  /* ======= ASSET-DIAT (valmiina tarvittaessa) ======= */
+  /* ======= ASSET-diat (valmiina jos tarvitsette) ======= */
   .slide.asset .slide-header{ background: var(--accent); }
   .slide.asset .slide-body{ display:grid;place-items:center;overflow:hidden;background:#000; }
   .asset-wrap{ width:100%;height:100%;display:grid;place-items:center;background:#000; }
@@ -515,6 +514,7 @@ async function loadWarnings(){
 /* ===================== TILANNEHUONE – viimeiset 24h + LISÄINFO ===================== */
 const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
 
+/* Perussiivous (poista script/style, pehmeät tavuviivat jne.) */
 function cleanHtmlToText(html){
   const tmp = document.createElement('div');
   tmp.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
@@ -522,7 +522,7 @@ function cleanHtmlToText(html){
   return text.replace(/\u00AD/g,'').replace(/\s+\n/g,'\n').trim();
 }
 
-/* "Kaupunki pvm aika kuvaus: taso" -> {city,time,kind,level} */
+/* Listasivun rivi: "Kaupunki pvm aika kuvaus: taso" -> {city,time,kind,level} */
 function parseTilanne(text){
   const results = [];
   const re = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+([^\n\r]+?)(?=\s+[A-ZÅÄÖ]|$)/g;
@@ -542,11 +542,54 @@ function parseTilanne(text){
   return results;
 }
 
-/* UUSI: selkeä kenttäpoiminta + footerien poisto, rivitettynä */
+/* Poista sivuston navigaatio/footereiden rivit lisäinfosivulta */
+function pruneSiteNoise(lines){
+  const kill = [
+    /^Tilannehuone\.fi/i, /^Pääuutiset/i, /^Hälytyslista/i, /^Kartta/i, /^Tietokanta/i,
+    /^Liikenne/i, /^ETUSIVU/i, /^MEDIATIEDOT/i, /^YHTEYSTIEDOT/i, /^PALAUTE/i,
+    /^Juuri nyt:/i, /^Login/i, /^Rekisteröidy/i, /^Ohjeita/i, /^Unohditko/i,
+    /^Uusimmat/i, /^Kuvat/i, /^Poliisitehtäviä/i, /^Julkaisija/i, /^Tietosuojaseloste/i,
+    /©\s*\d{4}\s*Tilannehuone\.fi/i, /\|\s*Arknet/i
+  ];
+  return lines.filter(l=>l && !kill.some(rx=>rx.test(l)));
+}
+
+/* Valitse lisäinfosivulta pienin elementti, joka sisältää kiinnostavat kentät */
+function extractDetailFromPage(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const candidates = Array.from(doc.querySelectorAll('article, main, #content, .content, .card, .container, .post, .entry, body *'));
+  const keys = ['Paikka:', 'Tarkempi paikka:', 'Ajankohta:', 'Päivitetty:'];
+
+  let bestText = '';
+  for (const el of candidates){
+    const t = (el.innerText||'').trim();
+    if (!t) continue;
+    if (keys.some(k=>t.includes(k))){
+      // Pieni ja informatiivinen on parempi
+      if (!bestText || t.length < bestText.length) bestText = t;
+    }
+  }
+  if (!bestText) bestText = (doc.body?.innerText||'').trim();
+
+  // Riveiksi + melu pois
+  let lines = bestText.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  lines = pruneSiteNoise(lines);
+
+  // Jos sivulla on vielä pitkää listaa, pyri katkaisemaan ensimmäiseen "Ajankohta/Päivitetty" jälkeen
+  const idxAj = lines.findIndex(l=>/^Ajankohta:/i.test(l));
+  const idxPv = lines.findIndex(l=>/^Päivitetty:/i.test(l));
+  const lastMeta = Math.max(idxAj, idxPv);
+  if (lastMeta >= 0 && lastMeta + 1 < lines.length){
+    // katkaise tähän (meta viimeiseksi)
+    lines = lines.slice(0, lastMeta + 1);
+  }
+
+  return lines.join('\n');
+}
+
+/* Rakenna nätit rivit korttiin */
 function formatDetail(detailRaw){
   if (!detailRaw) return '';
-
-  // rivit talteen (älä kaada yhdeksi riviksi)
   const lines = detailRaw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
 
   let paikka = '', tarkempi = '', ajankohta = '', paivitetty = '';
@@ -563,11 +606,9 @@ function formatDetail(detailRaw){
     if (/^Ajankohta:/i.test(l))       { ajankohta = l.replace(/^Ajankohta:\s*/i,'').trim(); continue; }
     if (/^Päivitetty:/i.test(l))      { paivitetty = l.replace(/^Päivitetty:\s*/i,'').trim(); continue; }
 
-    // muu “otsikko/kuvaus”
     others.push(l);
   }
 
-  // Rakenna HTML riveittäin
   let html = '<div class="th-desc">';
   if (others.length)   html += `<div>${others.join(' ')}</div>`;
   if (paikka)          html += `<div><strong>Paikka:</strong> ${paikka}</div>`;
@@ -578,15 +619,12 @@ function formatDetail(detailRaw){
   return html;
 }
 
-/* Hae lisäinfo linkkisivuilta — palautetaan KOKO siivottu teksti (ei enää 600 merk. rajaa) */
-async function fetchDetailsFromHU(htmlString, limit){
-  const doc = new DOMParser().parseFromString(htmlString, 'text/html');
+/* Hae lisäinfosivut linkeistä (listan HTML:stä) ja poimi vain varsinainen sisältö */
+async function fetchDetailsFromHU(listPageHtml, limit){
+  const doc = new DOMParser().parseFromString(listPageHtml, 'text/html');
   const anchors = Array.from(doc.querySelectorAll('a'))
     .filter(a => /Avaa\s+tehtäväsivu/i.test(a.textContent||'') || /tehtava|tehtäv/i.test(a.getAttribute('href')||''))
-    .map(a => {
-      try { return new URL(a.getAttribute('href'), 'https://www.tilannehuone.fi').href; }
-      catch(_){ return null; }
-    })
+    .map(a => { try { return new URL(a.getAttribute('href'), 'https://www.tilannehuone.fi').href; } catch(_){ return null; } })
     .filter(Boolean)
     .slice(0, Math.max(0, limit || 20));
 
@@ -596,14 +634,14 @@ async function fetchDetailsFromHU(htmlString, limit){
       const r = await fetchWithTimeout(PROXY + encodeURIComponent(url) + '&_=' + Date.now(), 12000);
       if (!r.ok) { details.push(''); continue; }
       const page = await r.text();
-      const text = cleanHtmlToText(page);
-      details.push(text);
+      const picked = extractDetailFromPage(page);
+      details.push(picked);
     }catch{ details.push(''); }
   }
   return details;
 }
 
-/* Skaalausluokka kortille tason mukaan */
+/* Kortin skaalausluokka tason mukaan */
 function levelCardClass(level){
   const l = (level||'').toLowerCase();
   if (l.includes('suuri')) return 'sev-large';
