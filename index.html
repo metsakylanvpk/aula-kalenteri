@@ -604,127 +604,136 @@ function isFocusPlace(name){
   return FOCUS_PLACES.some(p => n === p.toLowerCase());
 }
 
-/* ===================== TILANNEHUONE (tilannehuone.fi) – viimeiset 20 + "Tilanne ohi" ===================== */
+/* ===================== TILANNEHUONE (tilannehuone.fi) – robusti parseri ===================== */
 async function loadTilannehuone(){
   const box = document.getElementById('th-list');
   box.innerHTML = '<div class="th-card"><div class="th-title">Ladataan hälytyksiä…</div></div>';
 
-  // Apurit (lokaalit, etteivät sotke muun koodin muuttujia)
   const INACTIVE_AFTER_HOURS = 4;
   const LIMIT = 20;
 
-  const norm = s => (s||'')
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/\u00A0/g,' ')
-    .replace(/\u00AD/g,'')
-    .replace(/[ ]{2,}/g,' ')
-    .trim();
-
   const toSentenceCase = s => s ? s.trim().replace(/^./, c => c.toUpperCase()) : '';
-
   const cleanupTaskText = s => (s||'')
     .replace(/Avaa tehtäväsivu.+$/i,'')
     .replace(/Lisätty:.+$/i,'')
     .replace(/Silminnäkijähavainto:.+$/i,'')
     .replace(/\s+/g,' ')
     .trim();
-
-  const severityFromText = txt => {
-    const t = norm(txt);
-    if (/\bsuuri\b/.test(t)) return 'large';
-    if (/\bkeskisuuri\b/.test(t)) return 'medium';
+  const severityFromText = size => {
+    const t = (size||'').toLowerCase();
+    if (t.includes('suuri')) return 'large';
+    if (t.includes('keskisuuri')) return 'medium';
     return 'small';
   };
-  const sevClass = sev => sev==='large' ? 'sev-large' : (sev==='medium' ? 'sev-medium' : 'sev-small');
+  const sevClass = s => s==='large' ? 'sev-large' : (s==='medium' ? 'sev-medium' : 'sev-small');
 
   try{
     const url = PROXY + encodeURIComponent('https://www.tilannehuone.fi/lista.php?list=disorder') + '&_=' + Date.now();
     const html = await fetchWithTimeout(url, 15000).then(r=>r.text());
+    console.debug('[Tilannehuone] fetched HTML head:', (html||'').slice(0,200));
+
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    let text = (doc.body?.innerText || '')
-      .replace(/\r/g,'').replace(/\t/g,' ')
-      .replace(/\u00A0/g,' ').replace(/\u00AD/g,'')
-      .replace(/[ ]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim();
 
+    // Yritä 1: DOM-rakenne (taulukko/luettelo)
     const rows = [];
-    // Sietää “Kaupunki, Alue  31.12.2025 12:34(:ss)  tehtävä…” -muodon.
-    const reMain = /([A-ZÅÄÖa-zåäö][A-ZÅÄÖa-zåäö\-\.\s,()]{1,60})\s+(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?)\s+([^|]+?)(?=(?:\s+[A-ZÅÄÖa-zåäö][A-ZÅÄÖa-zåäö\-\.\s,()]{1,60}\s+\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})|$)/g;
-    let m;
-    while ((m = reMain.exec(text)) !== null) {
-      const city = (m[1]||'').trim().replace(/\s+/g,' ');
-      const timeStr = (m[2]||'').trim();
-      let task = cleanupTaskText((m[3]||'').trim());
-
-      // Nosta koko ja poista se itse tekstistä
-      const sizeMatch = task.match(/\b(pieni|keskisuuri|suuri)\b/i);
+    const addRow = (city, timeStr, task) => {
+      if (!city && !timeStr && !task) return;
+      let txt = cleanupTaskText(task||'');
+      // poimi koko ja poista se itse tekstistä
+      const sizeMatch = txt.match(/\b(pieni|keskisuuri|suuri)\b/i);
       const sizeTxt = sizeMatch ? sizeMatch[1].toLowerCase() : 'pieni';
-      task = task.replace(/\b(pieni|keskisuuri|suuri)\b/i,'').replace(/[,:]\s*$/,'').trim();
+      txt = txt.replace(/\b(pieni|keskisuuri|suuri)\b/i,'').replace(/[,:]\s*$/,'').trim();
 
-      // Aika -> Date
-      const [d, t] = timeStr.split(/\s+/);
-      const [dd, mm, yyyy] = d.split('.').map(Number);
-      const [HH, MM, SS] = (t||'').split(':').map(Number);
-      const dt = new Date(yyyy, (mm||1)-1, dd||1, HH||0, MM||0, SS||0||0);
+      // Aika -> Date (yritetään “dd.mm.yyyy HH:MM(:SS)?”)
+      let dt = null, timePretty = timeStr||'';
+      const m = (timeStr||'').match(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+      if (m){
+        const dd=+m[1], mm=+m[2], yyyy=+m[3], HH=+m[4], MM=+m[5], SS=+(m[6]||0);
+        dt = new Date(yyyy,mm-1,dd,HH,MM,SS);
+        timePretty = `${('0'+dd).slice(-2)}.${('0'+mm).slice(-2)}.${yyyy} ${('0'+HH).slice(-2)}:${('0'+MM).slice(-2)}${SS?':'+('0'+SS).slice(-2):''}`;
+      }
+      const inactive = /tilanne\s*ohi/i.test(txt) || (dt && (Date.now()-dt.getTime()) > INACTIVE_AFTER_HOURS*60*60*1000);
+      rows.push({ city: (city||'').trim(), timeStr: timePretty || (timeStr||'').trim(), dt, task: txt, size: sizeTxt, inactive });
+    };
 
-      // Inaktiivisuus: “tilanne ohi” tekstissä TAI yli 4 h vanha
-      const inactive = /tilanne\s*ohi/i.test(task) || ((Date.now() - dt.getTime()) > INACTIVE_AFTER_HOURS*60*60*1000);
-
-      rows.push({ city, timeStr, dt, task, size:sizeTxt, inactive });
+    // 1a) Taulukkomuotoinen?
+    const tableRows = doc.querySelectorAll('table tr, .table tr, tbody tr');
+    if (tableRows.length){
+      tableRows.forEach(tr=>{
+        const tds = tr.querySelectorAll('td,th');
+        if (tds.length >= 3){
+          const city = tds[0].innerText.trim();
+          const time = tds[1].innerText.trim();
+          const task = tds[2].innerText.trim();
+          if (/\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}/.test(time)) addRow(city,time,task);
+        }
+      });
     }
 
-    // Varapolku jos pääregex ei löytänyt mitään: rivi-rakenne (City \n datetime \n task)
+    // 1b) Listamuotoinen?
     if (!rows.length){
-      const lines = text.split('\n').map(s=>s.trim()).filter(Boolean);
-      for (let i=0;i<lines.length-2;i++){
-        const C = lines[i], D = lines[i+1], T = lines[i+2];
-        if (!/^\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?$/.test(D)) continue;
-        let task = cleanupTaskText(T);
-        const sizeMatch = task.match(/\b(pieni|keskisuuri|suuri)\b/i);
-        const sizeTxt = sizeMatch ? sizeMatch[1].toLowerCase() : 'pieni';
-        task = task.replace(/\b(pieni|keskisuuri|suuri)\b/i,'').replace(/[,:]\s*$/,'').trim();
+      const items = doc.querySelectorAll('li, .list-group-item, .event, .row');
+      items.forEach(el=>{
+        const txt = el.innerText.replace(/\s+/g,' ').trim();
+        // Etsi kaupunki + aikaleima
+        const m = txt.match(/^\s*([A-ZÅÄÖa-zåäö\-.(),\s]{2,60})\s+(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?)\s+(.*)$/);
+        if (m) addRow(m[1], m[2], m[3]);
+      });
+    }
 
-        const [d, t] = D.split(/\s+/);
-        const [dd, mm, yyyy] = d.split('.').map(Number);
-        const [HH, MM, SS] = (t||'').split(':').map(Number);
-        const dt = new Date(yyyy, (mm||1)-1, dd||1, HH||0, MM||0, SS||0||0);
+    // Yritä 2: Sisällön “innerText” ja regex
+    if (!rows.length){
+      let text = (doc.body?.innerText || '')
+        .replace(/\r/g,'').replace(/\t/g,' ')
+        .replace(/\u00A0/g,' ').replace(/\u00AD/g,'')
+        .replace(/[ ]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim();
 
-        const inactive = /tilanne\s*ohi/i.test(task) || ((Date.now() - dt.getTime()) > INACTIVE_AFTER_HOURS*60*60*1000);
+      // Pääregex: "Kaupunki[, alue]  dd.mm.yyyy hh:mm(:ss)  tehtävä…"
+      const reMain = /([A-ZÅÄÖa-zåäö][A-ZÅÄÖa-zåäö\-\.\s,()]{1,60})\s+(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?)\s+([^|]+?)(?=(?:\s+[A-ZÅÄÖa-zåäö][A-ZÅÄÖa-zåäö\-\.\s,()]{1,60}\s+\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})|$)/g;
+      let m;
+      while ((m = reMain.exec(text)) !== null) addRow(m[1], m[2], m[3]);
 
-        rows.push({ city:C, timeStr:D, dt, task, size:sizeTxt, inactive });
+      // Varapolku: rivi-rakenne (City \n datetime \n task)
+      if (!rows.length){
+        const lines = text.split('\n').map(s=>s.trim()).filter(Boolean);
+        for (let i=0;i<lines.length-2;i++){
+          const C = lines[i], D = lines[i+1], T = lines[i+2];
+          if (/^\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?$/.test(D)) addRow(C,D,T);
+        }
       }
     }
 
-    // Rajaus 24h sisään, mutta jos tyhjä → käytä silti uusimmat
-    const now = Date.now();
-    let list = rows
-      .filter(r => (now - r.dt.getTime()) <= 24*60*60*1000)
-      .sort((a,b)=>b.dt - a.dt);
+    console.debug('[Tilannehuone] parsed rows:', rows.length);
 
-    if (!list.length) {
-      list = rows.sort((a,b)=>b.dt - a.dt);
-    }
-    list = list.slice(0, LIMIT);
-
-    if (!list.length){
-      box.innerHTML = '<div class="th-card"><div class="th-title">Ei tuoreita hälytyksiä</div></div>';
+    // Jos ei mitään löytynyt, näytä info
+    if (!rows.length){
+      box.innerHTML = '<div class="th-card"><div class="th-title">Ei tuoreita hälytyksiä</div><div class="event-description">Tietojen muoto on muuttunut tai haku estetty. Tarkista PROXY/Worker.</div></div>';
       return;
     }
 
+    // Lajittelu (uusin → vanhin), ensisijaisesti 24h sisään; jos tyhjä, käytä kuitenkin uusimmat
+    const byTimeDesc = (a,b) => (b.dt?.getTime()||0) - (a.dt?.getTime()||0);
+    const now = Date.now();
+    let list = rows.filter(r => r.dt && (now - r.dt.getTime()) <= 24*60*60*1000).sort(byTimeDesc);
+    if (!list.length) list = rows.sort(byTimeDesc);
+    list = list.slice(0, LIMIT);
+
+    // Render
     box.innerHTML = list.map(r=>{
       const sev = severityFromText(r.size);
-      const title = `${toSentenceCase(r.task)} (${r.size})` + (r.inactive ? ' <span class="muted">— Tilanne ohi</span>' : '');
+      const inactiveFlag = r.inactive ? ' <span class="muted">— Tilanne ohi</span>' : '';
+      const title = `${toSentenceCase(r.task)} (${r.size})${inactiveFlag}`;
       return `<div class="th-card ${sevClass(sev)}">
         <div class="th-top">
-          <div class="th-city">${r.city}</div>
-          <div class="th-time">${r.timeStr}</div>
+          <div class="th-city">${r.city || '—'}</div>
+          <div class="th-time">${r.timeStr || ''}</div>
         </div>
         <div class="th-title">${title}</div>
       </div>`;
     }).join('');
 
   }catch(e){
-    console.error('Tilannehuone:', e);
+    console.error('Tilannehuone ERROR:', e);
     box.innerHTML = '<div class="th-card"><div class="th-title">Tilannehuoneen tietoja ei voitu hakea</div></div>';
   }
 }
@@ -828,5 +837,6 @@ init();
 </script>
 </body>
 </html>
+
 
 
