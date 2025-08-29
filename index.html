@@ -555,23 +555,21 @@ const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/hal
 /* Keveä “siivous”: poista skriptit/tyylit, korvaa monilyönnit välilyönnillä */
 function cleanHtmlToText(html){
   const tmp = document.createElement('div');
-  // Poista skriptit/tyylit
   tmp.innerHTML = html
     .replace(/<script[\s\S]*?<\/script>/gi,'')
     .replace(/<style[\s\S]*?<\/style>/gi,'');
   let text = tmp.textContent || tmp.innerText || '';
 
-  // Normalisointeja:
-  text = text
-    .replace(/\u00AD/g,'')             // pehmeä tavuviiva pois (tieliikenne­onnettomuus)
-    .replace(/\u00A0/g,' ')            // kovaväli -> välilyönti
-    .replace(/\s*klo\s*/gi,' ')        // "klo" pois -> pelkkä väli
-    .replace(/(\d{1,2})\.(\d{2})(?:\.(\d{2}))?/g, (_m, h, m, s) => {
-      // Muunna "hh.mm(.ss)" -> "hh:mm(:ss)" (helpottaa parsimista)
-      return s ? `${h}:${m}:${s}` : `${h}:${m}`;
-    })
+  return text
+    .replace(/\u00AD/g,'')        // pehmeä tavuviiva pois (tieliikenne­onnettomuus)
+    .replace(/\u00A0/g,' ')       // kovaväli -> välilyönti
+    .replace(/\s*klo\s*/gi,' ')   // "klo" pois
+    // hh.mm(.ss) -> hh:mm(:ss)
+    .replace(/(\d{1,2})\.(\d{2})(?:\.(\d{2}))(?=\D|$)/g, '$1:$2:$3')
+    .replace(/(\d{1,2})\.(\d{2})(?=\D|$)/g, '$1:$2')
     .replace(/\s+/g,' ')
     .trim();
+}
 
   return text;
 }
@@ -582,15 +580,15 @@ function cleanHtmlToText(html){
 */
 function parseTilanne(text){
   const results = [];
-  // Kaupunki … pvm d.m.yyyy … aika hh:mm(:ss) … kuvaus (jatkuu kunnes seuraava Kaupunki tai teksti loppuu)
+  // Kaupunki  d.m.yyyy  hh:mm(:ss)  KUVAUS(: taso)?
   const re = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{1,2}[./]\d{1,2}[./]\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+([^\n\r]+?)(?=\s+[A-ZÅÄÖ]|$)/g;
 
   let m;
   while ((m = re.exec(text)) !== null) {
     const city = m[1].trim();
-    const date = m[2].trim();       // esim. 28.8.2025
-    const time = m[3].trim();       // esim. 06:41:07 (tuli jo normalisoituna)
-    const tail = m[4].trim();       // esim. "tieliikenneonnettomuus: pieni"
+    const date = m[2].trim();          // esim. 28.8.2025
+    const time = m[3].trim();          // esim. 06:41:07
+    const tail = m[4].trim();          // esim. "tieliikenneonnettomuus: pieni"
 
     // erottele "kuvaus: taso"
     let kind = tail;
@@ -601,17 +599,19 @@ function parseTilanne(text){
       kind  = tail.slice(0, lv.index).replace(/:\s*$/,'').trim();
     }
 
-    // Rakenna Date — salli 1-numeroiset pvm-osat
-    const [d, mo, y] = date.split(/[./]/).map(x=>x.trim());
+    // Rakenna ISO-aika (salli 1-numeroiset pvm-osat)
+    const [d, mo, y] = date.split(/[./]/).map(s=>s.trim());
     const iso = `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}T${time.padStart(5,'0')}`;
     const ts  = new Date(iso);
-
     if (!isNaN(ts.getTime())) {
-      results.push({ city, time: ts, kind, level });
+      // otsikko isolla alkukirjaimella
+      const capKind = kind.charAt(0).toUpperCase() + kind.slice(1);
+      results.push({ city, time: ts, kind: capKind, level });
     }
   }
   return results;
 }
+
 
 /* Isompi fontti isommalle tasolle */
 function levelClass(level){
@@ -636,35 +636,39 @@ async function loadTilannehuone(){
     // Parsitaan
     let items = parseTilanne(text);
 
-    // Suodata viimeiseen 24h, järjestä uusin ensin
-    const now = Date.now();
-    const dayMs = 24*60*60*1000;
-    items = items
-      .filter(it => (now - it.time.getTime()) <= dayMs)
-      .sort((a,b)=>b.time - a.time)
-      .slice(0,20);
+   // …kun olet saanut `rawHtml` -> `text = cleanHtmlToText(rawHtml)` -> `items = parseTilanne(text)`
 
-    if (!items.length){
-      box.innerHTML = '<div class="th-item"><div class="th-title">Ei tuoreita hälytyksiä</div></div>';
-      return;
-    }
+// 24 h ikkuna, uusimmat ensin
+const now = Date.now();
+const last24 = items
+  .filter(x => (now - x.time.getTime()) <= 24*60*60*1000)
+  .sort((a,b) => b.time - a.time);
 
-    // Renderöi
-    box.innerHTML = items.map(it=>{
-      const ended = (now - it.time.getTime()) > 3*60*60*1000; // > 3 h => “Tilanne ohi”
-      const timeText = it.time.toLocaleString('fi-FI');
-      const sevCls = levelClass(it.level);
-      const levelTxt = it.level ? ` <span class="th-sev ${sevCls}">(${capitalFirst(it.level)})</span>` : '';
-      const titleTxt = capitalFirst(it.kind || 'Hälytys');
-      return `<div class="th-item">
-        <div class="th-top">
-          <div class="th-city">${it.city}</div>
-          <div class="th-time">${timeText}</div>
-        </div>
-        <div class="th-title">${titleTxt}${levelTxt}</div>
-        ${ended ? `<div class="th-ended"><strong>Tilanne ohi</strong></div>` : ''}
-      </div>`;
-    }).join('');
+// jos tyhjä, näytä informatiivinen viesti
+if (!last24.length) {
+  listEl.innerHTML = `
+    <div class="traffic-item">
+      <div class="t-title">Ei tuoreita hälytyksiä (24 h)</div>
+      <div class="t-meta">Tilannehuone-sivun muoto saattoi muuttua. Yritä hetken päästä uudelleen.</div>
+    </div>`;
+  return;
+}
+
+// muuten renderöi
+listEl.innerHTML = last24.slice(0, 20).map(ev => {
+  // fonttikoko tason mukaan
+  const size =
+    ev.level === 'suuri' ? '1.25rem' :
+    ev.level === 'keskisuuri' ? '1.15rem' :
+    '1.05rem';
+
+  return `
+    <div class="traffic-item">
+      <div class="t-title" style="font-size:${size}">${ev.kind}${ev.level ? ` — ${ev.level}`:''}</div>
+      <div class="t-meta">${ev.city} • ${ev.time.toLocaleDateString('fi-FI')} ${ev.time.toLocaleTimeString('fi-FI')}</div>
+    </div>`;
+}).join('');
+
 
   }catch(e){
     console.error('Tilannehuone:', e);
@@ -692,5 +696,6 @@ init();
 </script>
 </body>
 </html>
+
 
 
