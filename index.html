@@ -126,7 +126,7 @@
   .th-desc{margin-top:6px;color:#333}
   .th-ended{margin-top:6px;font-size:.95rem;color:#555}
 
-  /* ======= ASSET DIAT (kuva/pdf/html) — jos käytätte näitä, jätä tyhjäksi tai poista jos ette */
+  /* ======= ASSET DIAT (kuva/pdf/html) ======= */
   .slide.asset .slide-header{ background: var(--accent); }
   .slide.asset .slide-body{
     display: grid;
@@ -227,6 +227,7 @@
       </div>
     </div>
   </section>
+  <!-- HUOM: Asset-diat lisätään JS:llä tämän jälkeen automaattisesti -->
 </div>
 
 <!-- ical.js tapahtumille -->
@@ -234,9 +235,17 @@
 <script>
 /* ===================== YLEISET ===================== */
 const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // ← pidä teidän Worker
-const SLIDES = ['slide-events','slide-wx','slide-tilanne'];  // 3 diaa
+const SLIDES = ['slide-events','slide-wx','slide-tilanne'];  // 3 perusdia
 let   slideIndex = 0;
 const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
+
+/* === ASSET-DIAT: muokkaa tähän tiedostot, joita haluat näyttää === */
+const CUSTOM_ASSETS = [
+  // Esimerkkejä — poista tai vaihda polut teidän tiedostoihin:
+  // { type: 'img',  title: 'Infokuva',    src: './info.jpg' },
+  // { type: 'pdf',  title: 'Ohjeistus',   src: './ohje.pdf#view=FitH&toolbar=0&navpanes=0' },
+  // { type: 'page', title: 'Tiedotesivu', src: './tiedote.html' },
+];
 
 function tickClock(){
   const now = new Date();
@@ -549,23 +558,14 @@ async function loadWarnings(){
 }
 
 /* ===================== TILANNEHUONE – “viimeiset 24h” ===================== */
-/* Haetaan pääsivun listaus ja parsitaan tekstit ulos. Näytetään max 20 kpl. */
 const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
 
-/* Keveä “siivous”: poista skriptit/tyylit, korvaa monilyönnit välilyönnillä */
 function cleanHtmlToText(html){
   const tmp = document.createElement('div');
   tmp.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
   const text = tmp.textContent || tmp.innerText || '';
-  return text.replace(/\u00AD/g,'') // pehmeä tavuviiva pois
-             .replace(/\s+/g,' ')
-             .trim();
+  return text.replace(/\u00AD/g,'').replace(/\s+/g,' ').trim();
 }
-
-/* Parsitaan rivit malliin:
-   "Vantaa 28.08.2025 15:57:36 tieliikenneonnettomuus: pieni"
-   Palautetaan {city, time:Date, kind, level}
-*/
 function parseTilanne(text){
   const results = [];
   const re = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+([^\n\r]+?)(?=\s+[A-ZÅÄÖ]|$)/g;
@@ -575,8 +575,6 @@ function parseTilanne(text){
     const date = m[2].trim();
     const time = m[3].trim();
     const tail = m[4].trim();
-
-    // erottele "kuvaus: taso" jos löytyy
     let kind = tail;
     let level = '';
     const lv = tail.match(/:\s*(pieni|keskisuuri|suuri)\b/i);
@@ -584,17 +582,12 @@ function parseTilanne(text){
       level = lv[1].toLowerCase();
       kind  = tail.replace(lv[0], '').trim().replace(/:$/, '').trim();
     }
-    // Aikaleima
     const [d,mo,y] = date.split('.');
     const ts = new Date(`${y}-${mo}-${d}T${time.length===5?time+':00':time}`);
-    if (!isNaN(ts.getTime())) {
-      results.push({ city, time: ts, kind, level });
-    }
+    if (!isNaN(ts.getTime())) results.push({ city, time: ts, kind, level });
   }
   return results;
 }
-
-/* Isompi fontti isommalle tasolle */
 function levelClass(level){
   const l = (level||'').toLowerCase();
   if (l.includes('suuri')) return 'sev-large';
@@ -614,10 +607,8 @@ async function loadTilannehuone(){
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const text = cleanHtmlToText(html);
 
-    // Parsitaan
     let items = parseTilanne(text);
 
-    // Suodata viimeiseen 24h, järjestä uusin ensin
     const now = Date.now();
     const dayMs = 24*60*60*1000;
     items = items
@@ -630,7 +621,6 @@ async function loadTilannehuone(){
       return;
     }
 
-    // Renderöi
     box.innerHTML = items.map(it=>{
       const ended = (now - it.time.getTime()) > 3*60*60*1000; // > 3 h => “Tilanne ohi”
       const timeText = it.time.toLocaleString('fi-FI');
@@ -653,8 +643,81 @@ async function loadTilannehuone(){
   }
 }
 
+/* ===================== ASSET-DIAT (kuva/pdf/html) ===================== */
+async function exists(url){
+  try{
+    // HEAD ensin
+    const r = await fetch(url, { method:'HEAD', cache:'no-store' });
+    if (r.ok) return true;
+    // osa ympäristöistä ei salli HEADia -> kokeile kevyt GET timeoutilla
+    const g = await fetchWithTimeout(url, 6000, { method:'GET' });
+    return g.ok;
+  }catch{ return false; }
+}
+async function filterExistingAssets(list){
+  const out = [];
+  for (const a of list){
+    if (!a || !a.src) continue;
+    try{
+      if (await exists(a.src)) out.push(a);
+    }catch(_){}
+  }
+  return out;
+}
+async function addAssetSlides(){
+  const assets = await filterExistingAssets(CUSTOM_ASSETS);
+  if (!assets.length) return;
+
+  const root = document.querySelector('.slides');
+  if (!root) return;
+
+  assets.forEach((asset, idx) => {
+    const id = `slide-asset-${idx+1}`;
+    const sec = document.createElement('section');
+    sec.className = 'slide asset';
+    sec.id = id;
+    sec.setAttribute('aria-label', asset.title || 'Dia');
+
+    const header = document.createElement('div');
+    header.className = 'slide-header';
+    header.textContent = asset.title || 'Dia';
+
+    const body = document.createElement('div');
+    body.className = 'slide-body';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'asset-wrap';
+
+    const type = (asset.type || '').toLowerCase();
+    if (type === 'img') {
+      const img = document.createElement('img');
+      img.src = asset.src;
+      img.alt = asset.title || '';
+      wrap.appendChild(img);
+    } else if (type === 'pdf') {
+      const iframe = document.createElement('iframe');
+      iframe.src = asset.src;          // esim: './ohje.pdf#view=FitH&toolbar=0&navpanes=0'
+      wrap.appendChild(iframe);
+    } else {
+      const iframe = document.createElement('iframe');
+      iframe.src = asset.src;          // HTML-sivu
+      wrap.appendChild(iframe);
+    }
+
+    body.appendChild(wrap);
+    sec.appendChild(header);
+    sec.appendChild(body);
+    root.appendChild(sec);
+
+    SLIDES.push(id); // lisää kiertoon
+  });
+}
+
 /* ===================== INIT + PÄIVITYKSET ===================== */
 async function init(){
+  // Lisää mahdolliset asset-diat (vain jos tiedostot löytyvät)
+  await addAssetSlides();
+
   // Tapahtumat
   const ev = await loadICS(ICS_URL());   renderEvents('miehisto-events', ev);
   // Sää + varoitukset
