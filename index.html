@@ -9,8 +9,8 @@
     --gap: 16px;
     --panel-pad: 16px;
     --header-h: 64px;
-    --accent: #007b83;
-    --slide-time-ms: 20000;
+    --accent: #007b83;         /* yhtenäinen tehosteväri */
+    --slide-time-ms: 20000;    /* 20 s per näkymä */
   }
   html,body{
     margin:0;height:100vh;width:100vw;background:#e9eef3;color:#111;
@@ -38,7 +38,7 @@
   }
   .slide-body{
     background:#f2f6fa;padding:var(--panel-pad);
-    overflow:hidden;
+    overflow:hidden;              /* desktop: ei scrollia */
     -webkit-overflow-scrolling:auto;
   }
 
@@ -47,10 +47,8 @@
   .events-list{display:grid;gap:12px}
   .event-card{
     background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);
-    padding:12px 14px; transition:transform .15s ease;
+    padding:12px 14px
   }
-  .event-card:hover{ transform: translateY(-2px); }
-  .event-link{ color: inherit; text-decoration: none; display:block; }
   .event-date{
     font-weight:800;color:#fff;border-radius:8px;display:inline-block;padding:5px 10px;margin-bottom:6px
   }
@@ -111,46 +109,31 @@
 
   /* ======= TILANNEHUONE ======= */
   .tilanne .slide-header{background:var(--accent)}
-  .th-wrap{max-width:1600px; margin:0 auto;} /* kavennus kuten säässä */
-  .th-list{display:grid;gap:12px}
-  .th-item{
-    background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12);
-    display:grid;gap:6px; transition: opacity .2s ease;
-  }
+  .th-list{display:grid;gap:10px}
+  .th-item{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
   .th-top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
   .th-city{font-weight:900}
   .th-time{font-size:.95rem;opacity:.8}
-  .th-title{font-weight:800;margin-top:2px;display:flex;align-items:center;gap:8px}
-  .th-sev{opacity:.85;font-weight:900}
-  .th-desc{margin-top:4px;color:#333;white-space:pre-line}
-  .th-icon{font-size:1.35rem;line-height:1}
+  .th-title{font-weight:800;margin-top:4px}
+  .th-sev{margin-left:6px;font-weight:900}
+  .sev-small{font-size:1.05rem}
+  .sev-medium{font-size:1.12rem}
+  .sev-large{font-size:1.18rem}
+  .th-desc{margin-top:6px;color:#333;white-space:pre-wrap}
+  .th-ended{margin-top:6px;font-size:.95rem;color:#555}
 
-  /* kortin mittakaava koon mukaan */
-  .sev-small  { font-size:1.00rem; }
-  .sev-medium { font-size:1.08rem; }
-  .sev-large  { font-size:1.16rem; }
-
-  /* yli 2 h vanhat: haalea */
-  .ended { opacity:.55; }
-
-  /* ======= ASSET DIAT (kuva/pdf/html) ======= */
-  .slide.asset .slide-header{ background: var(--accent); }
-  .slide.asset .slide-body{
-    display: grid; place-items: center; overflow: hidden; background: #000;
-  }
-  .asset-wrap{ width:100%; height:100%; display:grid; place-items:center; background:#000; }
-  .asset-wrap img{ max-width:100%; max-height:100%; height:auto; object-fit:contain; background:#000; }
-  .asset-wrap iframe{ width:100%; height:100%; border:0; background:#fff; }
+  /* ======= ASSET-DIAT (ei muutoksia tässä versiossa) ======= */
 
   @media (max-width: 1024px){
     #clock{display:none}
     .slide-body{
-      overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior: contain;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior: contain;
       max-height: calc(100vh - var(--header-h) - 2*var(--gap));
     }
     .forecast{grid-template-columns:repeat(3,1fr)}
     .wx-grid{height:auto; max-width:none}
-    .slide.asset .slide-body{ overflow:auto; -webkit-overflow-scrolling:touch; }
   }
 </style>
 </head>
@@ -206,10 +189,8 @@
   <section class="slide tilanne" id="slide-tilanne" aria-label="Tilannehuone">
     <div class="slide-header">Tilannehuone</div>
     <div class="slide-body">
-      <div class="th-wrap">
-        <div id="th-list" class="th-list">
-          <div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div>
-        </div>
+      <div id="th-list" class="th-list">
+        <div class="th-item"><div class="th-title">Ladataan hälytyksiä…</div></div>
       </div>
     </div>
   </section>
@@ -219,7 +200,7 @@
 <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
 /* ===================== YLEISET ===================== */
-const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';
+const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';   // teidän Worker
 const SLIDES = ['slide-events','slide-wx','slide-tilanne'];
 let   slideIndex = 0;
 const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
@@ -238,7 +219,9 @@ setInterval(tickClock, 1000); tickClock();
 function showSlide(i){
   SLIDES.forEach((id,idx)=>{
     const el = document.getElementById(id);
-    if (el) el.classList.toggle('active', idx===i);
+    if (el) {
+      if (idx===i){ el.classList.add('active'); } else { el.classList.remove('active'); }
+    }
   });
 }
 let autoTimer = setInterval(()=>{
@@ -287,10 +270,6 @@ function stripLinks(html) {
   div.querySelectorAll('a').forEach(a => a.remove());
   return (div.textContent || div.innerText || '').replace(/https?:\/\/\S+/g, '').trim();
 }
-function firstUrlFromText(s){
-  const m = (s||'').match(/https?:\/\/[^\s)<>]+/i);
-  return m ? m[0] : null;
-}
 
 /* ===================== TAPAHTUMAT (Nimenhuuto ICS) ===================== */
 const ICS_URL = () => PROXY + encodeURIComponent('https://metsakylanvpk.nimenhuuto.com/calendar/ical') + '&_=' + Date.now();
@@ -303,7 +282,6 @@ function cleanTitle(title) {
 }
 function getDateColor(summary) {
   const t = (summary || '').toLowerCase();
-  if (t.includes('retki')) return '#fcd854'; /* lisätoive */
   if (t.includes('auto')) return '#fc832f';
   if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f';
   if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638';
@@ -339,20 +317,13 @@ async function loadICS(url) {
 
     const items = vevents
       .filter(ev => ev.endDate && ev.endDate.toJSDate() > now)
-      .map(ev => {
-        const desc = ev.description || '';
-        let link = null;
-        try { link = ev.component.getFirstPropertyValue('url') || null; } catch(_) {}
-        if (!link) link = firstUrlFromText(desc);
-        return {
-          summary: ev.summary || '',
-          description: desc || '',
-          startDate: ev.startDate.toJSDate(),
-          endDate: ev.endDate.toJSDate(),
-          allDay: ev.startDate.isDate && ev.endDate.isDate,
-          url: link
-        };
-      })
+      .map(ev => ({
+        summary: ev.summary || '',
+        description: ev.description || '',
+        startDate: ev.startDate.toJSDate(),
+        endDate: ev.endDate.toJSDate(),
+        allDay: ev.startDate.isDate && ev.endDate.isDate
+      }))
       .sort((a,b)=>a.startDate-b.startDate)
       .slice(0, LIMIT);
     return { items };
@@ -368,20 +339,18 @@ function renderEvents(containerId, payload) {
   if (!items || !items.length){ c.innerHTML = `<div class="event-card"><div class="event-title">Ei tulevia tapahtumia</div></div>`; return; }
   items.forEach(it=>{
     const card = document.createElement('div'); card.className='event-card';
-    const inner = document.createElement(it.url ? 'a' : 'div');
-    if (it.url){ inner.href = it.url; inner.target = '_blank'; inner.rel='noopener'; inner.className='event-link'; }
-
     const date = document.createElement('div'); date.className='event-date'; date.style.background=getDateColor(it.summary);
     date.textContent = formatEventDate(it.startDate, it.endDate, it.allDay);
     const title=document.createElement('div'); title.className='event-title'; title.textContent = cleanTitle(it.summary);
-    inner.appendChild(date); inner.appendChild(title);
-    if (it.description){ const d=document.createElement('div'); d.className='event-description'; d.textContent=stripLinks(it.description); inner.appendChild(d); }
-    card.appendChild(inner); c.appendChild(card);
+    card.appendChild(date); card.appendChild(title);
+    if (it.description){ const d=document.createElement('div'); d.className='event-description'; d.textContent=stripLinks(it.description); card.appendChild(d); }
+    c.appendChild(card);
   });
 }
 
-/* ===================== SÄÄ (FMI WFS) & VAROITUKSET ===================== */
+/* ===================== SÄÄ (FMI WFS – HARMONIE/TVP) ===================== */
 const KL = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 };
+
 function wxEmoji(symbol){
   const s = Number(symbol);
   if ([1].includes(s)) return '☀️';
@@ -424,16 +393,21 @@ async function loadFmiWeather(){
     <div class="w-city">${KL.name}</div>
     <div class="w-temp muted">…</div>
     <div class="w-row"><span class="w-badge">Ladataan FMI-säätietoja…</span></div>`;
+
   try{
     const base = 'https://opendata.fmi.fi/wfs';
     const now  = new Date();
     const end  = new Date(now.getTime() + 9*60*60*1000);
     const params = new URLSearchParams({
-      service:'WFS',version:'2.0.0',request:'GetFeature',
+      service:'WFS',
+      version:'2.0.0',
+      request:'GetFeature',
       storedquery_id:'fmi::forecast::harmonie::surface::point::timevaluepair',
       latlon:`${KL.lat},${KL.lon}`,
       parameters:'temperature,windSpeedMS,WeatherSymbol3,precipitation1h',
-      starttime: now.toISOString(), endtime: end.toISOString(), timestep:'60'
+      starttime: now.toISOString(),
+      endtime:   end.toISOString(),
+      timestep:  '60'
     });
     const url = PROXY + encodeURIComponent(`${base}?${params.toString()}`) + '&_=' + Date.now();
     const r = await fetchWithTimeout(url, 15000);
@@ -468,7 +442,8 @@ async function loadFmiWeather(){
         <div class="fc-time">${r.time.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}</div>
         <div class="fc-temp">${isFinite(r.T)? Math.round(r.T)+'°C':'–'}</div>
         <div class="fc-sub">${wxEmoji(r.SYM||0)} ${isFinite(r.RR)? r.RR.toFixed(1):'–'} mm/h • ${isFinite(r.WS)? Math.round(r.WS):'–'} m/s</div>
-      </div>`).join('');
+      </div>
+    `).join('');
   }catch(e){
     card.innerHTML = `
       <div class="w-city">${KL.name}</div>
@@ -478,6 +453,7 @@ async function loadFmiWeather(){
   }
 }
 
+/* ===================== VAROITUKSET (FMI CAP RSS) ===================== */
 const FMI_RSS_FI = 'https://alerts.fmi.fi/cap/feed/rss_fi-FI.rss';
 function sevClassFromText(txt){
   const t=(txt||'').toLowerCase();
@@ -539,16 +515,32 @@ async function loadWarnings(){
   }
 }
 
-/* ===================== TILANNEHUONE (24h + infotxt + ikonit) ===================== */
+/* ===================== TILANNEHUONE (24h + infotxt + KUNTARAJAUS ~50km) ===================== */
 const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
 
+/* Kunnat / alueet noin 50 km säteellä Nurmijärveltä (tekstipohjainen rajaus) */
+const AREA_MUNIS = [
+  'Nurmijärvi','Klaukkala','Hyvinkää','Riihimäki','Hausjärvi','Loppi',
+  'Vihti','Karkkila','Espoo','Vantaa','Helsinki','Kauniainen',
+  'Kerava','Järvenpää','Tuusula','Mäntsälä','Pornainen','Sipoo',
+  'Kirkkonummi','Siuntio'
+];
+function inArea(item){
+  const hay = [item.city, item.kind, item.detail].join(' ').toLowerCase();
+  return AREA_MUNIS.some(n => hay.includes(n.toLowerCase()));
+}
+
 function capitalFirst(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+
+/* Kortin koon luokka tason mukaan */
 function levelToCardClass(level){
   const l=(level||'').toLowerCase();
   if (l.includes('suuri')) return 'sev-large';
   if (l.includes('keskisuuri')) return 'sev-medium';
-  return 'sev-small';
+  return ''; // pieni -> normaali
 }
+
+/* Siivous + fallback teksti */
 function cleanHtmlToText(html){
   const tmp = document.createElement('div');
   tmp.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
@@ -569,19 +561,18 @@ function parseTilanneFromText(text){
     if (lv) { level = lv[1].toLowerCase(); kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim(); }
     const [d,mo,y] = date.split('.');
     const ts = new Date(`${y}-${mo}-${d}T${time.length===5?time+':00':time}`);
-    if (!isNaN(ts.getTime())) results.push({ city, time: ts, kind, level, detail:null });
+    if (!isNaN(ts.getTime())) results.push({ city, time: ts, kind, level, detail:'' });
   }
   return results;
 }
+
+/* infotxt_* -lohkojen keruu + riviavaimien haku */
 function collectInfoBlocks(doc){
   const map = new Map();
   doc.querySelectorAll('div[id^="infotxt_"]').forEach(div=>{
     const id = (div.id||'').replace('infotxt_','');
-    let txt = (div.textContent||'').replace(/\u00AD/g,'').replace(/\s+\n/g,'\n');
-    txt = txt.replace(/[ \t]+\n/g,'\n').replace(/\n{2,}/g,'\n').trim();
-    // Poista rivien lopusta linkkiosuudet ym.
-    txt = txt.replace(/\n?(Avaa tehtäväsivu.*)$/i,'').trim();
-    map.set(id, txt);
+    const txt = (div.textContent||'').replace(/\s+/g,' ').trim();
+    if (id && txt) map.set(id, txt);
   });
   return map;
 }
@@ -597,6 +588,26 @@ function findInfoKeyFromRow(row){
   if (sib && /^infotxt_/.test(sib.id||'')) return (sib.id||'').replace('infotxt_','');
   return null;
 }
+
+/* Lisätiedon formaatti: rivitä ja katkaise linkkien kohdalta */
+function formatDetail(txt){
+  if (!txt) return '';
+  let t = txt.replace(/\u00AD/g,'').replace(/\s+/g,' ').trim();
+
+  // katkaisu linkkien/metadataan alkaessa
+  t = t.split(/Avaa tehtäväsivu|Lisätty:/i)[0].trim();
+
+  // varmistetaan rivinvaihdot avainsanojen eteen
+  t = t.replace(/\s*(Paikka:)\s*/gi, '\n$1 ')
+       .replace(/\s*(Tarkempi paikka:)\s*/gi, '\n$1 ')
+       .replace(/\s*(Ajankohta:)\s*/gi, '\n$1 ')
+       .replace(/\s*(Päivitetty:)\s*/gi, '\n$1 ');
+
+  // siistitä mahdollinen alkurivi (esim. Ensitiedote...)
+  return t.trim();
+}
+
+/* DOM-pohjainen parsi */
 function parseTilanneFromDom(html){
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const infoMap = collectInfoBlocks(doc);
@@ -604,6 +615,7 @@ function parseTilanneFromDom(html){
   let rows = [];
   const rowSelectors = ['.pfade','li','tr','.list-item','.news-item','.event','.content ul li','.items > *'];
   rowSelectors.forEach(sel => rows.push(...doc.querySelectorAll(sel)));
+
   rows = rows.filter(el => (el.textContent||'').trim().length > 20).slice(0, 1500);
 
   const lineRe = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+(.+)/;
@@ -613,6 +625,7 @@ function parseTilanneFromDom(html){
     const text = (row.textContent||'').replace(/\u00AD/g,'').replace(/\s+/g,' ').trim();
     const m = text.match(lineRe);
     if (!m) continue;
+
     let city = m[1].trim();
     let date = m[2].trim();
     let time = m[3].trim();
@@ -627,58 +640,25 @@ function parseTilanneFromDom(html){
     if (isNaN(ts.getTime())) continue;
 
     const key = findInfoKeyFromRow(row);
-    const detail = key ? (infoMap.get(key) || '') : '';
+    const rawDetail = key ? (infoMap.get(key) || '') : '';
+    const detail = formatDetail(rawDetail);
 
     items.push({ city, time: ts, kind, level, detail });
   }
-  if (!items.length) return parseTilanneFromText(cleanHtmlToText(html));
 
-  // Deduplikaatio
-  const seen = new Set(); const uniq=[];
+  if (!items.length){
+    return parseTilanneFromText(cleanHtmlToText(html));
+  }
+
+  // deduplikoi
+  const seen = new Set();
+  const uniq = [];
   for (const it of items){
     const k = `${it.city}|${it.time.toISOString()}|${(it.kind||'').toLowerCase()}`;
     if (!seen.has(k)){ seen.add(k); uniq.push(it); }
   }
   return uniq;
 }
-
-/* Ikonit tehtävätyypeille */
-function taskIcon(title){
-  const t = (title||'').toLowerCase();
-
-  // --- palot ---
-  if (/palohälytys|palokunta.*hälytys|paloilmoitin/.test(t)) return '🚒';
-  if (/rakennus.*palo|asunto.*palo|huoneisto.*palo/.test(t)) return '🏠🔥';
-  if (/maasto.*palo|ruohikko|metsä.*palo/.test(t)) return '🌲🔥';
-  if (/ajoneuvo.*palo|autopalo|linja-auto.*palo|kuorma-auto.*palo/.test(t)) return '🚗🔥';
-
-  // --- liikenne ---
-  if (/tieliikenne.*onnettomuus|liikenneonnettomuus|kolari/.test(t)) return '🚗💥';
-  if (/vesiliikenne|vene|meripelastus/.test(t)) return '🛥️🆘';
-  if (/lentoliikenne|ilmailu|lentokone|helikopteri/.test(t)) return '✈️';
-
-  // --- vuodot / aineet ---
-  if (/öljy|polttoaine|kemikaali|vuoto/.test(t)) return '🛢️';
-  if (/vaaralliset.*aineet|kaasuvuoto/.test(t)) return '☣️';
-  if (/räjähdys|räjähde/.test(t)) return '💥';
-
-  // --- vesi / myrsky ---
-  if (/tulva|vesivahinko|putkirikko/.test(t)) return '💧';
-  if (/sähkö|sähkölinja|muuntamo/.test(t)) return '⚡';
-  if (/myrsky|puu.*tiellä/.test(t)) return '🌬️';
-
-  // --- henkilöt / eläimet ---
-  if (/etsintä|kadonnut/.test(t)) return '🔎';
-  if (/ensivaste|sairaskohtaus|elvytys/.test(t)) return '🚑';
-  if (/eläin|koira|kissa|hirvi|peura|poro/.test(t)) return '🐾';
-
-  // --- virka-apu / poliisi ---
-  if (/poliisi|virka-apu poliisille/.test(t)) return '🚓';
-
-  // fallback
-  return '🆘';
-}
-
 
 async function loadTilannehuone(){
   const box = document.getElementById('th-list');
@@ -691,6 +671,9 @@ async function loadTilannehuone(){
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
     let items = parseTilanneFromDom(html);
+
+    // *** KUNTARAJAUS ***
+    items = items.filter(inArea);
 
     // 24h suodatus, uusin ensin
     const now = Date.now(), dayMs = 24*60*60*1000;
@@ -705,21 +688,22 @@ async function loadTilannehuone(){
     }
 
     box.innerHTML = items.map(it=>{
-      const ageMs = now - it.time.getTime();
-      const endedCls = ageMs > 2*60*60*1000 ? 'ended' : ''; // 2h heuristiikka
-      const sizeCls  = levelToCardClass(it.level);
+      const ended = (now - it.time.getTime()) > 3*60*60*1000; // heuristiikka ennallaan
+      const clsSize = levelToCardClass(it.level);
+      const clsEnded = ended ? ' ended' : '';
       const timeText = it.time.toLocaleString('fi-FI');
       const titleTxt = capitalFirst((it.kind||'Hälytys').replace(/\s+/g,' '));
       const levelTxt = it.level ? ` <span class="th-sev">(${capitalFirst(it.level)})</span>` : '';
-      const detailTxt = it.detail ? `<div class="th-desc">${formatDetail(it.detail)}</div>` : '';
-      const icon = `<span class="th-icon">${taskIcon(it.kind)}</span>`;
-      return `<div class="th-item ${sizeCls} ${endedCls}">
+      const detailTxt = it.detail ? `<div class="th-desc">${it.detail}</div>` : '';
+
+      return `<div class="th-item ${clsSize}${clsEnded}">
         <div class="th-top">
           <div class="th-city">${it.city}</div>
           <div class="th-time">${timeText}</div>
         </div>
-        <div class="th-title">${icon} ${titleTxt}${levelTxt}</div>
+        <div class="th-title">${titleTxt}${levelTxt}</div>
         ${detailTxt}
+        ${ended ? `<div class="th-ended"><strong>Tilanne ohi</strong></div>` : ''}
       </div>`;
     }).join('');
 
@@ -729,104 +713,8 @@ async function loadTilannehuone(){
   }
 }
 
-/* Muotoile infotxt useille riveille ja siivoa loput linkkiosuudet */
-function formatDetail(txt){
-  let s = (txt||'').trim();
-
-  // Pilko tyypillisiin “Avain: arvo” -riveihin
-  s = s
-    .replace(/\s*Paikka:\s*/gi, '\nPaikka: ')
-    .replace(/\s*Tarkempi paikka:\s*/gi, '\nTarkempi paikka: ')
-    .replace(/\s*Ajankohta:\s*/gi, '\nAjankohta: ')
-    .replace(/\s*Päivitetty:\s*/gi, '\nPäivitetty: ')
-    .replace(/\s*Lisätietoja:\s*/gi, '\nLisätietoja: ')
-    .replace(/\s*Tietolähde:\s*/gi, '\nTietolähde: ');
-
-  // Varmista että alkuperäinen ensimmäinen rivi näkyy omanaan
-  if (!s.startsWith('\n')) s = s;
-
-  // Poista loppulinkit ja metatekstit
-  s = s.replace(/\n?Avaa tehtäväsivu.*$/i,'').trim();
-
-  // Tiivistä tyhjät rivit
-  s = s.replace(/\n{3,}/g, '\n\n');
-
-  return s;
-}
-
-/* ===================== ASSET-DIAT ===================== */
-const CUSTOM_ASSETS = [
-  // esimerkit – vaihda tarpeen mukaan. Jos tiedostoa ei löydy, diaa ei lisätä.
-  { type: 'img',  title: 'Infokuva',    src: './info.jpg' },
-  { type: 'pdf',  title: 'Ohjeistus',   src: './ohje.pdf#view=FitH&toolbar=0&navpanes=0' },
-  { type: 'page', title: 'Tiedotesivu', src: './tiedote.html' }
-];
-async function exists(url){
-  try{
-    const r = await fetch(url, { method:'HEAD', cache:'no-store' });
-    if (r.ok) return true;
-    const g = await fetchWithTimeout(url, 6000, { method:'GET' });
-    return g.ok;
-  }catch{ return false; }
-}
-async function filterExistingAssets(list){
-  const out = [];
-  for (const a of list){
-    if (!a || !a.src) continue;
-    try{ if (await exists(a.src)) out.push(a); }catch(_){}
-  }
-  return out;
-}
-async function addAssetSlides(){
-  const assets = await filterExistingAssets(CUSTOM_ASSETS);
-  if (!assets.length) return;
-  const root = document.querySelector('.slides');
-  if (!root) return;
-
-  assets.forEach((asset, idx) => {
-    const id = `slide-asset-${idx+1}`;
-    const sec = document.createElement('section');
-    sec.className = 'slide asset';
-    sec.id = id;
-    sec.setAttribute('aria-label', asset.title || 'Dia');
-
-    const header = document.createElement('div');
-    header.className = 'slide-header';
-    header.textContent = asset.title || 'Dia';
-
-    const body = document.createElement('div');
-    body.className = 'slide-body';
-
-    const wrap = document.createElement('div');
-    wrap.className = 'asset-wrap';
-
-    const type = (asset.type || '').toLowerCase();
-    if (type === 'img') {
-      const img = document.createElement('img');
-      img.src = asset.src; img.alt = asset.title || '';
-      wrap.appendChild(img);
-    } else if (type === 'pdf') {
-      const iframe = document.createElement('iframe');
-      iframe.src = asset.src;
-      wrap.appendChild(iframe);
-    } else {
-      const iframe = document.createElement('iframe');
-      iframe.src = asset.src;
-      wrap.appendChild(iframe);
-    }
-
-    body.appendChild(wrap);
-    sec.appendChild(header);
-    sec.appendChild(body);
-    root.appendChild(sec);
-    SLIDES.push(id);
-  });
-}
-
 /* ===================== INIT + PÄIVITYKSET ===================== */
 async function init(){
-  await addAssetSlides();
-
   const ev = await loadICS(ICS_URL());   renderEvents('miehisto-events', ev);
   await loadFmiWeather();
   await loadWarnings();
@@ -841,4 +729,3 @@ init();
 </script>
 </body>
 </html>
-
