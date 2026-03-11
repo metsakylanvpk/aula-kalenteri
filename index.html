@@ -10,7 +10,6 @@
     --panel-pad: 16px;
     --header-h: 64px;
     --accent: #007b83;
-    --slide-time-ms: 20000;
   }
   html,body{
     margin:0;height:100vh;width:100vw;background:#e9eef3;color:#111;
@@ -117,7 +116,6 @@
   .th-time{font-size:.95rem;opacity:.8}
   .th-title{font-weight:800;margin-top:4px}
   .th-sev{margin-left:6px;font-weight:900}
-  /* koko kortin fonttikoko muuttuu tason mukaan */
   .th-item.sev-medium{font-size:1.08rem}
   .th-item.sev-large{font-size:1.16rem}
   .th-desc{margin-top:6px;color:#333;white-space:pre-wrap}
@@ -194,13 +192,19 @@
   </section>
 </div>
 
-<!-- ical.js -->
 <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
 <script>
 /* ===================== YLEISET ===================== */
 const PROXY  = 'https://vpk.mijuze1.workers.dev/?url=';
 const SLIDES = ['slide-events','slide-wx','slide-tilanne'];
-let   slideIndex = 0;
+const SLIDE_DURATIONS = {
+  'slide-events': 30000,   // 30 s
+  'slide-wx': 20000,       // 20 s
+  'slide-tilanne': 30000   // 30 s
+};
+
+let slideIndex = 0;
+let autoTimer = null;
 const IS_MOBILE = window.matchMedia('(max-width: 1024px)').matches;
 
 function tickClock(){
@@ -212,7 +216,8 @@ function tickClock(){
       now.toLocaleTimeString('fi-FI',{hour:'2-digit', minute:'2-digit'});
   }
 }
-setInterval(tickClock, 1000); tickClock();
+setInterval(tickClock, 1000);
+tickClock();
 
 function showSlide(i){
   SLIDES.forEach((id,idx)=>{
@@ -220,10 +225,21 @@ function showSlide(i){
     if (el) el.classList.toggle('active', idx===i);
   });
 }
-let autoTimer = setInterval(()=>{
-  slideIndex = (slideIndex + 1) % SLIDES.length;
-  showSlide(slideIndex);
-}, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
+
+function scheduleNextSlide(){
+  clearTimeout(autoTimer);
+  const currentId = SLIDES[slideIndex];
+  const delay = SLIDE_DURATIONS[currentId] || 20000;
+
+  autoTimer = setTimeout(() => {
+    slideIndex = (slideIndex + 1) % SLIDES.length;
+    showSlide(slideIndex);
+    scheduleNextSlide();
+  }, delay);
+}
+
+showSlide(slideIndex);
+scheduleNextSlide();
 
 /* Swipe */
 (function enableSwipe(){
@@ -245,24 +261,31 @@ let autoTimer = setInterval(()=>{
     if(scrolling||!moved) return;
     const dx=(e.changedTouches?.[0]?.clientX||sx)-sx;
     if(Math.abs(dx)>H){
-      clearInterval(autoTimer);
+      clearTimeout(autoTimer);
       slideIndex = dx<0 ? (slideIndex+1)%SLIDES.length : (slideIndex-1+SLIDES.length)%SLIDES.length;
       showSlide(slideIndex);
-      autoTimer = setInterval(()=>{ slideIndex=(slideIndex+1)%SLIDES.length; showSlide(slideIndex); },
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-time-ms')) );
+      scheduleNextSlide();
     }
   },{passive:true});
 })();
 
 /* Helpers */
 async function fetchWithTimeout(url, ms=12000, opts={}){
-  const ctrl = new AbortController(); const id = setTimeout(()=>ctrl.abort(), ms);
-  try { const r = await fetch(url, {signal: ctrl.signal, cache:'no-store', ...opts}); clearTimeout(id); return r; }
-  catch(e){ clearTimeout(id); throw e; }
+  const ctrl = new AbortController();
+  const id = setTimeout(()=>ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, {signal: ctrl.signal, cache:'no-store', ...opts});
+    clearTimeout(id);
+    return r;
+  } catch(e){
+    clearTimeout(id);
+    throw e;
+  }
 }
 function stripLinks(html) {
   if (!html) return '';
-  const div = document.createElement('div'); div.innerHTML = html;
+  const div = document.createElement('div');
+  div.innerHTML = html;
   div.querySelectorAll('a').forEach(a => a.remove());
   return (div.textContent || div.innerText || '').replace(/https?:\/\/\S+/g, '').trim();
 }
@@ -279,7 +302,7 @@ function cleanTitle(title) {
 }
 function getDateColor(summary) {
   const t = (summary || '').toLowerCase();
-  if (t.includes('retki')) return '#fcd854';      // ← lisätty
+  if (t.includes('retki')) return '#fcd854';
   if (t.includes('auto')) return '#fc832f';
   if (t.includes('471') || t.includes('473') || t.includes('477')) return '#fc832f';
   if (t.includes('kalustoesittely') || t.includes('kalusto')) return '#7ab638';
@@ -324,6 +347,7 @@ async function loadICS(url) {
       }))
       .sort((a,b)=>a.startDate-b.startDate)
       .slice(0, LIMIT);
+
     return { items };
   } catch (e) {
     return { items: [], error: e.name === 'AbortError' ? 'Aikakatkaisu' : 'Verkkovirhe' };
@@ -333,21 +357,46 @@ function renderEvents(containerId, payload) {
   const c = document.getElementById(containerId);
   c.innerHTML = '';
   const { items, error } = payload;
-  if (error) { c.innerHTML = `<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div><div class="event-description">${error}</div></div>`; return; }
-  if (!items || !items.length){ c.innerHTML = `<div class="event-card"><div class="event-title">Ei tulevia tapahtumia</div></div>`; return; }
+
+  if (error) {
+    c.innerHTML = `<div class="event-card"><div class="event-title">Tietojen haku epäonnistui</div><div class="event-description">${error}</div></div>`;
+    return;
+  }
+  if (!items || !items.length){
+    c.innerHTML = `<div class="event-card"><div class="event-title">Ei tulevia tapahtumia</div></div>`;
+    return;
+  }
+
   items.forEach(it=>{
-    const card = document.createElement('div'); card.className='event-card';
-    const date = document.createElement('div'); date.className='event-date'; date.style.background=getDateColor(it.summary);
+    const card = document.createElement('div');
+    card.className='event-card';
+
+    const date = document.createElement('div');
+    date.className='event-date';
+    date.style.background=getDateColor(it.summary);
     date.textContent = formatEventDate(it.startDate, it.endDate, it.allDay);
-    const title=document.createElement('div'); title.className='event-title'; title.textContent = cleanTitle(it.summary);
-    card.appendChild(date); card.appendChild(title);
-    if (it.description){ const d=document.createElement('div'); d.className='event-description'; d.textContent=stripLinks(it.description); card.appendChild(d); }
+
+    const title=document.createElement('div');
+    title.className='event-title';
+    title.textContent = cleanTitle(it.summary);
+
+    card.appendChild(date);
+    card.appendChild(title);
+
+    if (it.description){
+      const d=document.createElement('div');
+      d.className='event-description';
+      d.textContent=stripLinks(it.description);
+      card.appendChild(d);
+    }
+
     c.appendChild(card);
   });
 }
 
 /* ===================== SÄÄ (FMI WFS) ===================== */
 const KL = { name:'Klaukkalan Metsäkylä', lat:60.372, lon:24.740 };
+
 function wxEmoji(symbol){
   const s = Number(symbol);
   if ([1].includes(s)) return '☀️';
@@ -359,10 +408,12 @@ function wxEmoji(symbol){
   if ([15,16,17,18,19,20].includes(s)) return '⛈️';
   return '🌡️';
 }
+
 function parseFmiTVP(xmlText){
   const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
   const series = Array.from(doc.getElementsByTagNameNS('*','MeasurementTimeseries'));
   const outMap = new Map();
+
   series.forEach(ts=>{
     const id = (ts.getAttribute('gml:id')||'').toLowerCase();
     const key =
@@ -371,39 +422,52 @@ function parseFmiTVP(xmlText){
       id.includes('precipitation1h')  ? 'RR' :
       id.includes('weathersymbol3')   ? 'SYM': null;
     if (!key) return;
+
     Array.from(ts.getElementsByTagNameNS('*','MeasurementTVP')).forEach(tvp=>{
       const time = tvp.getElementsByTagNameNS('*','time')[0]?.textContent;
       const val  = tvp.getElementsByTagNameNS('*','value')[0]?.textContent;
       if (!time || val==null) return;
+
       const iso = new Date(time).toISOString();
       if (!outMap.has(iso)) outMap.set(iso, { time:new Date(time) });
       const rec = outMap.get(iso);
       rec[key] = Number(val);
     });
   });
+
   return Array.from(outMap.values()).sort((a,b)=>a.time-b.time);
 }
+
 async function loadFmiWeather(){
   const card = document.getElementById('wx-card');
   const forecastBox = document.getElementById('wx-forecast');
+
   card.innerHTML = `
     <div class="w-city">${KL.name}</div>
     <div class="w-temp muted">…</div>
     <div class="w-row"><span class="w-badge">Ladataan FMI-säätietoja…</span></div>`;
+
   try{
     const base = 'https://opendata.fmi.fi/wfs';
     const now  = new Date();
     const end  = new Date(now.getTime() + 9*60*60*1000);
+
     const params = new URLSearchParams({
-      service:'WFS',version:'2.0.0',request:'GetFeature',
+      service:'WFS',
+      version:'2.0.0',
+      request:'GetFeature',
       storedquery_id:'fmi::forecast::harmonie::surface::point::timevaluepair',
       latlon:`${KL.lat},${KL.lon}`,
       parameters:'temperature,windSpeedMS,WeatherSymbol3,precipitation1h',
-      starttime: now.toISOString(), endtime: end.toISOString(), timestep:'60'
+      starttime: now.toISOString(),
+      endtime: end.toISOString(),
+      timestep:'60'
     });
+
     const url = PROXY + encodeURIComponent(`${base}?${params.toString()}`) + '&_=' + Date.now();
     const r = await fetchWithTimeout(url, 15000);
     if (!r.ok) throw new Error('FMI ' + r.status);
+
     const xml = await r.text();
     const rows = parseFmiTVP(xml);
     if (!rows.length) throw new Error('FMI: tyhjä vastaus');
@@ -427,6 +491,7 @@ async function loadFmiWeather(){
         <span class="w-badge">Sade ${rain} mm/h</span>
         <span class="w-badge">Klo ${current.time.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}</span>
       </div>`;
+
     const upcoming = rows.filter(r => r.time > current.time).slice(0,6);
     forecastBox.innerHTML = upcoming.map(r=>`
       <div class="fc-item">
@@ -445,6 +510,7 @@ async function loadFmiWeather(){
 
 /* ===================== VAROITUKSET (FMI CAP RSS) ===================== */
 const FMI_RSS_FI = 'https://alerts.fmi.fi/cap/feed/rss_fi-FI.rss';
+
 function sevClassFromText(txt){
   const t=(txt||'').toLowerCase();
   if (t.includes('punainen')||t.includes('red')) return 'lvl-red';
@@ -452,6 +518,7 @@ function sevClassFromText(txt){
   if (t.includes('keltainen')||t.includes('yellow')) return 'lvl-yellow';
   return '';
 }
+
 function warnItemHtml(w){
   return `<div class="warn-item ${w.level}">
     <div class="warn-icon">${w.level==='lvl-red'?'!':(w.level==='lvl-orange'?'!':'i')}</div>
@@ -462,19 +529,25 @@ function warnItemHtml(w){
     </div>
   </div>`;
 }
+
 async function loadWarnings(){
   const list = document.getElementById('warn-list');
   list.innerHTML = '<div class="warn-item"><div class="warn-content">Ladataan varoituksia…</div></div>';
+
   try{
     const url = PROXY + encodeURIComponent(FMI_RSS_FI) + '&_=' + Date.now();
-    const r = await fetchWithTimeout(url, 12000); if(!r.ok) throw new Error('FMI '+r.status);
+    const r = await fetchWithTimeout(url, 12000);
+    if(!r.ok) throw new Error('FMI '+r.status);
+
     const xml = await r.text();
     const doc = new DOMParser().parseFromString(xml, 'text/xml');
+
     const items = Array.from(doc.querySelectorAll('item')).map(it=>{
       const title = it.querySelector('title')?.textContent?.trim() || 'Varoitus';
       const desc  = it.querySelector('description')?.textContent?.trim() || '';
       const pub   = it.querySelector('pubDate')?.textContent?.trim() || '';
-      let when=''; try{ when = pub ? new Date(pub).toLocaleString('fi-FI') : '' }catch(_){}
+      let when='';
+      try{ when = pub ? new Date(pub).toLocaleString('fi-FI') : ''; }catch(_){}
       const level = sevClassFromText(title + ' ' + desc);
       return {title, desc, when, level};
     });
@@ -490,6 +563,7 @@ async function loadWarnings(){
       list.innerHTML = '<div class="warn-item"><div class="warn-content">Ei voimassa olevia varoituksia</div></div>';
       return;
     }
+
     let html = '';
     if (ku.length){
       html += `<div class="warn-item" style="background:#eef3f8"><div class="warn-content"><div class="w-title">Keski-Uusimaa</div></div></div>`;
@@ -499,28 +573,28 @@ async function loadWarnings(){
       html += `<div class="warn-item" style="background:#eef3f8"><div class="warn-content"><div class="w-title">Koko Suomi</div></div></div>`;
       html += fi.map(warnItemHtml).join('');
     }
+
     list.innerHTML = html;
   }catch{
     list.innerHTML = '<div class="warn-item"><div class="warn-content">Varoituksia ei voitu hakea</div></div>';
   }
 }
 
-/* ===================== TILANNEHUONE (24h + infotxt + kuntarajaus + ikonit) ===================== */
+/* ===================== TILANNEHUONE ===================== */
 const TH_URL = () => PROXY + encodeURIComponent('https://www.tilannehuone.fi/halytys.php') + '&_=' + Date.now();
 
-/* ~50 km säde Nurmijärveltä: tekstipohjainen kuntalista */
 const AREA_MUNIS = [
   'Nurmijärvi','Klaukkala','Hyvinkää','Riihimäki','Hausjärvi','Loppi',
   'Vihti','Karkkila','Espoo','Vantaa','Helsinki','Kauniainen',
   'Kerava','Järvenpää','Tuusula','Mäntsälä','Pornainen','Sipoo',
   'Kirkkonummi','Siuntio'
 ];
+
 function inArea(item){
   const hay = [item.city, item.kind, item.detail].join(' ').toLowerCase();
   return AREA_MUNIS.some(n => hay.includes(n.toLowerCase()));
 }
 
-/* Ikonit avainsanoista (emoji – ei brändilogoja) */
 function kindIcon(kind=''){
   const t = kind.toLowerCase();
   if (/(rakennuspalo|palohälyt|savuhavainto|tulipalo)/.test(t)) return '🚒';
@@ -536,13 +610,13 @@ function kindIcon(kind=''){
   return '📟';
 }
 
-/* siivous + fallback */
 function cleanHtmlToText(html){
   const tmp = document.createElement('div');
   tmp.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
   const text = tmp.textContent || tmp.innerText || '';
   return text.replace(/\u00AD/g,'').replace(/\s+/g,' ').trim();
 }
+
 function parseTilanneFromText(text){
   const results = [];
   const re = /([A-ZÅÄÖ][\wÅÄÖåäö\-\.\s/]+?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+([^\n\r]+?)(?=\s+[A-ZÅÄÖ]|$)/g;
@@ -554,7 +628,10 @@ function parseTilanneFromText(text){
     const tail = m[4].trim();
     let kind = tail, level = '';
     const lv = tail.match(/:\s*(pieni|keskisuuri|suuri)\b/i);
-    if (lv) { level = lv[1].toLowerCase(); kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim(); }
+    if (lv) {
+      level = lv[1].toLowerCase();
+      kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim();
+    }
     const [d,mo,y] = date.split('.');
     const ts = new Date(`${y}-${mo}-${d}T${time.length===5?time+':00':time}`);
     if (!isNaN(ts.getTime())) results.push({ city, time: ts, kind, level, detail:'' });
@@ -562,7 +639,6 @@ function parseTilanneFromText(text){
   return results;
 }
 
-/* infotxt_* keruu + avainrivin haku */
 function collectInfoBlocks(doc){
   const map = new Map();
   doc.querySelectorAll('div[id^="infotxt_"]').forEach(div=>{
@@ -572,6 +648,7 @@ function collectInfoBlocks(doc){
   });
   return map;
 }
+
 function findInfoKeyFromRow(row){
   const withClass = [row, ...row.querySelectorAll('[class]')];
   for (const el of withClass){
@@ -585,7 +662,6 @@ function findInfoKeyFromRow(row){
   return null;
 }
 
-/* lisäinfo muotoilu: rivitetään & poistetaan linkkihännät */
 function formatDetail(txt){
   if (!txt) return '';
   let t = txt.replace(/\u00AD/g,'').replace(/\s+/g,' ').trim();
@@ -597,7 +673,6 @@ function formatDetail(txt){
   return t.trim();
 }
 
-/* DOM-parsi */
 function parseTilanneFromDom(html){
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const infoMap = collectInfoBlocks(doc);
@@ -622,7 +697,10 @@ function parseTilanneFromDom(html){
 
     let kind = tail, level = '';
     const lv = tail.match(/:\s*(pieni|keskisuuri|suuri)\b/i);
-    if (lv) { level = lv[1].toLowerCase(); kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim(); }
+    if (lv) {
+      level = lv[1].toLowerCase();
+      kind = tail.replace(lv[0], '').trim().replace(/:$/, '').trim();
+    }
 
     const [d,mo,y] = date.split('.');
     const ts = new Date(`${y}-${mo}-${d}T${time.length===5?time+':00':time}`);
@@ -639,16 +717,17 @@ function parseTilanneFromDom(html){
     return parseTilanneFromText(cleanHtmlToText(html));
   }
 
-  // deduplikoi
   const seen = new Set(), uniq = [];
   for (const it of items){
     const k = `${it.city}|${it.time.toISOString()}|${(it.kind||'').toLowerCase()}`;
-    if (!seen.has(k)){ seen.add(k); uniq.push(it); }
+    if (!seen.has(k)){
+      seen.add(k);
+      uniq.push(it);
+    }
   }
   return uniq;
 }
 
-/* Pää: haku + suodatus + render */
 async function loadTilannehuone(){
   const box = document.getElementById('th-list');
   if (!box) return;
@@ -661,10 +740,8 @@ async function loadTilannehuone(){
 
     let items = parseTilanneFromDom(html);
 
-    // Kuntarajaus
     items = items.filter(inArea);
 
-    // 24h + uusin ensin
     const now = Date.now(), dayMs = 24*60*60*1000;
     items = items
       .filter(it => (now - it.time.getTime()) <= dayMs)
@@ -677,7 +754,7 @@ async function loadTilannehuone(){
     }
 
     box.innerHTML = items.map(it=>{
-      const ended = (now - it.time.getTime()) > 2*60*60*1000; // 2h -> häivytä
+      const ended = (now - it.time.getTime()) > 2*60*60*1000;
       const sizeCls = (it.level||'').includes('suuri') ? 'sev-large'
                      : (it.level||'').includes('keskisuuri') ? 'sev-medium' : '';
       const icon = kindIcon(it.kind||'');
@@ -707,14 +784,26 @@ async function loadTilannehuone(){
 
 /* ===================== INIT ===================== */
 async function init(){
-  const ev = await loadICS(ICS_URL());   renderEvents('miehisto-events', ev);
+  const ev = await loadICS(ICS_URL());
+  renderEvents('miehisto-events', ev);
+
   await loadFmiWeather();
   await loadWarnings();
   await loadTilannehuone();
 
-  setInterval(async ()=>{ const e=await loadICS(ICS_URL()); renderEvents('miehisto-events', e); }, 5*60*1000);
-  setInterval(loadFmiWeather,  10*60*1000);
-  setInterval(loadWarnings,    10*60*1000);
+  // Tapahtumat 4x vuorokaudessa = 6 h välein
+  setInterval(async ()=>{
+    const e = await loadICS(ICS_URL());
+    renderEvents('miehisto-events', e);
+  }, 6*60*60*1000);
+
+  // Sää 1x tunnissa
+  setInterval(loadFmiWeather, 60*60*1000);
+
+  // Varoitukset 1x tunnissa
+  setInterval(loadWarnings, 60*60*1000);
+
+  // Tilannehuone ennallaan = 5 min välein
   setInterval(loadTilannehuone, 5*60*1000);
 }
 init();
